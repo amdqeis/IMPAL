@@ -20,9 +20,9 @@ Markdown
 ## 🎨 Mockup Antarmuka
 Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 
-| Login Page | Dashboard | Core Feature |
+| Login Page | Dashboard User | Dashboard Admin |
 | :---: | :---: | :---: |
-| ![Login](assets/login.png) | ![Dash](assets/dash.png) | ![Feature](assets/feature.png) |
+| ![Login](assets/mock/LoginPage.png) | ![Dash](assets/mock/Dashboard User.png) | ![Feature](assets/mock/Dashboard Admin.png) |
 
 ---
 
