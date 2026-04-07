@@ -22,7 +22,7 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 
 | Login Page | Dashboard User | Dashboard Admin |
 | :---: | :---: | :---: |
-| ![Login](assets/mock/LoginPage.png) | ![Dash](assets/mock/Dashboard User.png) | ![Feature](assets/mock/Dashboard Admin.png) |
+| ![Login](assets/mock/LoginPage.png) | ![Dash](assets/mock/DashboardUser.png) | ![Feature](assets/mock/DashboardAdmin.png) |
 
 ---
 
