@@ -8,11 +8,11 @@ Markdown
 ## 📊 Perancangan Sistem (DFD)
 
 ### DFD Level 0
-![DFD Level 0](assets/DFD/DFD Level 0.png)
+![DFD Level 0](assets/DFD/DFD-Level-0.png)
 *Diagram Konteks yang menunjukkan aliran data global.*
 
 ### DFD Level 1
-![DFD Level 1](assets/DFD/DFD Level 1-Proses 1.png)
+![DFD Level 1](assets/DFD/DFD-Level-1-Proses-1.png)
 *Detail proses bisnis dan integrasi database.*
 
 ---
@@ -20,10 +20,15 @@ Markdown
 ## 🎨 Mockup Antarmuka
 Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 
-| Login Page | Dashboard User | Dashboard Admin |
+| Login Page | Register Page | Dashboard Admin |
 | :---: | :---: | :---: |
-| ![Login](assets/mock/LoginPage.png) | ![Dash](assets/mock/DashboardUser.png) | ![Feature](assets/mock/DashboardAdmin.png) |
-
+| ![Login](assets/mock/LoginPage.png) | ![Regis](assets/mock/RegisterPage.png) | ![DashAdm](assets/mock/DashboardAdmin.png) |
+| Dashboard User | Payment Page | Booking completed |
+| :---: | :---: | :---: |
+| ![DashUsr](assets/mock/DashboardUser.png) | ![Payment](assets/mock/BayarDongs.png) | ![Booked](assets/mock/BookingCompleted.png) |
+| Status Booking | History |
+| :---: | :---: | :---: |
+| ![Status](assets/mock/BookingUser.png) | ![Dash](assets/mock/HistoryUser.png) |
 ---
 
 ## 🛠️ Stack Teknologi
