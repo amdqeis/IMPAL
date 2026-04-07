@@ -15,6 +15,13 @@ Markdown
 ![DFD Level 1](assets/DFD/DFD-Level-1-Proses-1.png)
 *Detail proses bisnis dan integrasi database.*
 
+### ERD
+![ERD](assets/ERD/ERD.png)
+*Rancangan Database.*
+
+### Class Diagram
+![Class Diagram](assets/ClassDiragram/ClassDiagram.png)
+*Detail Behavior setiap kelas.*
 ---
 
 ## 🎨 Mockup Antarmuka
