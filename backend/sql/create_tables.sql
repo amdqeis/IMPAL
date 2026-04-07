@@ -99,7 +99,6 @@ CREATE TABLE IF NOT EXISTS payments (
     id_reservasi INTEGER NOT NULL,
     amount NUMERIC(12, 2) NOT NULL,
     status VARCHAR(50) NOT NULL,
-    paid_at TIMESTAMPTZ NULL,
     CONSTRAINT fk_payments_reservasi
         FOREIGN KEY (id_reservasi)
         REFERENCES reservasi (id_reservasi)

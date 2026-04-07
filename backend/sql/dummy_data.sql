@@ -1,14 +1,7 @@
 INSERT INTO cabang (id_cabang, nama, lokasi) VALUES
-    (1, 'Cabang Jakarta Pusat', 'Menteng, Jakarta'),
-    (2, 'Cabang Jakarta Selatan', 'Kemang, Jakarta'),
-    (3, 'Cabang Bandung', 'Dago, Bandung'),
-    (4, 'Cabang Surabaya', 'Tegalsari, Surabaya'),
-    (5, 'Cabang Yogyakarta', 'Malioboro, Yogyakarta'),
-    (6, 'Cabang Semarang', 'Simpang Lima, Semarang'),
-    (7, 'Cabang Medan', 'Kesawan, Medan'),
-    (8, 'Cabang Makassar', 'Panakkukang, Makassar'),
-    (9, 'Cabang Denpasar', 'Renon, Denpasar'),
-    (10, 'Cabang Balikpapan', 'Klandasan, Balikpapan');
+    (1, 'Cabang Jakarta', 'Jakarta'),
+    (2, 'Cabang Bandung', 'Bandung'),
+    (3, 'Cabang Malang', 'Malang');
 
 INSERT INTO roles (id_role, nama_role) VALUES
     (1, 'owner'),
@@ -28,15 +21,15 @@ INSERT INTO users (id_user, nama, email, password, no_hp) VALUES
     (10, 'Adinda', 'Adinda@example.com', '12345678', '081200000010');
 INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
     (1, 1, 'A01', 150000.00, 'available'),
-    (2, 2, 'A02', 160000.00, 'available'),
-    (3, 3, 'A03', 170000.00, 'maintenance'),
-    (4, 4, 'B01', 180000.00, 'available'),
-    (5, 5, 'B02', 190000.00, 'booked'),
-    (6, 6, 'B03', 200000.00, 'available'),
-    (7, 7, 'C01', 210000.00, 'available'),
-    (8, 8, 'C02', 220000.00, 'booked'),
-    (9, 9, 'C03', 230000.00, 'available'),
-    (10, 10, 'VIP1', 350000.00, 'available');
+    (2, 1, 'A02', 160000.00, 'available'),
+    (3, 1, 'VIP1', 350000.00, 'available'),
+    (4, 2, 'B01', 180000.00, 'available'),
+    (5, 2, 'B02', 190000.00, 'booked'),
+    (6, 2, 'B03', 200000.00, 'available'),
+    (7, 3, 'C01', 210000.00, 'available'),
+    (8, 3, 'C02', 220000.00, 'booked'),
+    (9, 3, 'C03', 230000.00, 'available'),
+    (10, 3, 'V01', 300000.00, 'available');
 
 INSERT INTO permissions (id_permission, id_role, nama_permission) VALUES
     (1, 1, 'manage_users'),
@@ -98,17 +91,17 @@ INSERT INTO reservasi (id_reservasi, id_user, id_jadwal, status, total_harga) VA
     (9, 9, 9, 'confirmed', 230000.00),
     (10, 10, 10, 'pending', 350000.00);
 
-INSERT INTO payments (id_payment, id_reservasi, amount, status, paid_at) VALUES
-    (1, 1, 150000.00, 'paid', '2026-04-09 09:00:00+07'),
-    (2, 2, 160000.00, 'unpaid', NULL),
-    (3, 3, 170000.00, 'refunded', '2026-04-09 10:00:00+07'),
-    (4, 4, 180000.00, 'paid', '2026-04-09 11:00:00+07'),
-    (5, 5, 190000.00, 'paid', '2026-04-09 12:00:00+07'),
-    (6, 6, 200000.00, 'pending', NULL),
-    (7, 7, 210000.00, 'paid', '2026-04-09 13:00:00+07'),
-    (8, 8, 220000.00, 'paid', '2026-04-09 14:00:00+07'),
-    (9, 9, 230000.00, 'paid', '2026-04-09 15:00:00+07'),
-    (10, 10, 350000.00, 'pending', NULL);
+INSERT INTO payments (id_payment, id_reservasi, amount, status) VALUES
+    (1, 1, 150000.00, 'paid'),
+    (2, 2, 160000.00, 'unpaid'),
+    (3, 3, 170000.00, 'refunded'),
+    (4, 4, 180000.00, 'paid'),
+    (5, 5, 190000.00, 'paid'),
+    (6, 6, 200000.00, 'pending'),
+    (7, 7, 210000.00, 'paid'),
+    (8, 8, 220000.00, 'paid'),
+    (9, 9, 230000.00, 'paid'),
+    (10, 10, 350000.00, 'pending');
 
 INSERT INTO payment_logs (id_log, id_payment, response) VALUES
     (1, 1, '{"gateway":"midtrans","status":"success","reference":"PAY-001"}'),
@@ -133,15 +126,3 @@ INSERT INTO refunds (id_refund, id_payment, amount, status) VALUES
     (8, 8, 50000.00, 'approved'),
     (9, 9, 60000.00, 'pending'),
     (10, 10, 120000.00, 'pending');
-
-SELECT setval(pg_get_serial_sequence('cabang', 'id_cabang'), COALESCE((SELECT MAX(id_cabang) FROM cabang), 1), true);
-SELECT setval(pg_get_serial_sequence('roles', 'id_role'), COALESCE((SELECT MAX(id_role) FROM roles), 1), true);
-SELECT setval(pg_get_serial_sequence('users', 'id_user'), COALESCE((SELECT MAX(id_user) FROM users), 1), true);
-SELECT setval(pg_get_serial_sequence('tempat', 'id_tempat'), COALESCE((SELECT MAX(id_tempat) FROM tempat), 1), true);
-SELECT setval(pg_get_serial_sequence('permissions', 'id_permission'), COALESCE((SELECT MAX(id_permission) FROM permissions), 1), true);
-SELECT setval(pg_get_serial_sequence('jadwal', 'id_jadwal'), COALESCE((SELECT MAX(id_jadwal) FROM jadwal), 1), true);
-SELECT setval(pg_get_serial_sequence('laporan', 'id_laporan'), COALESCE((SELECT MAX(id_laporan) FROM laporan), 1), true);
-SELECT setval(pg_get_serial_sequence('reservasi', 'id_reservasi'), COALESCE((SELECT MAX(id_reservasi) FROM reservasi), 1), true);
-SELECT setval(pg_get_serial_sequence('payments', 'id_payment'), COALESCE((SELECT MAX(id_payment) FROM payments), 1), true);
-SELECT setval(pg_get_serial_sequence('payment_logs', 'id_log'), COALESCE((SELECT MAX(id_log) FROM payment_logs), 1), true);
-SELECT setval(pg_get_serial_sequence('refunds', 'id_refund'), COALESCE((SELECT MAX(id_refund) FROM refunds), 1), true);

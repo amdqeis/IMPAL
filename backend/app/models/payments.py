@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -19,7 +18,6 @@ class Payment(Base):
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
-    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     reservasi: Mapped["Reservasi"] = relationship(
         "Reservasi",
@@ -41,4 +39,3 @@ class Payment(Base):
 
     def __repr__(self) -> str:
         return f"Payment(id_payment={self.id_payment!r}, status={self.status!r})"
-
