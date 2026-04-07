@@ -11,29 +11,21 @@ INSERT INTO cabang (id_cabang, nama, lokasi) VALUES
     (10, 'Cabang Balikpapan', 'Klandasan, Balikpapan');
 
 INSERT INTO roles (id_role, nama_role) VALUES
-    (1, 'super_admin'),
+    (1, 'owner'),
     (2, 'admin'),
-    (3, 'manager_operasional'),
-    (4, 'manager_keuangan'),
-    (5, 'staff_kasir'),
-    (6, 'staff_layanan'),
-    (7, 'member_silver'),
-    (8, 'member_gold'),
-    (9, 'auditor'),
-    (10, 'support');
+    (3, 'user');
 
 INSERT INTO users (id_user, nama, email, password, no_hp) VALUES
-    (1, 'Andi Saputra', 'andi@example.com', 'hashed_password_1', '081200000001'),
-    (2, 'Budi Santoso', 'budi@example.com', 'hashed_password_2', '081200000002'),
-    (3, 'Citra Lestari', 'citra@example.com', 'hashed_password_3', '081200000003'),
-    (4, 'Dewi Anggraini', 'dewi@example.com', 'hashed_password_4', '081200000004'),
-    (5, 'Eka Pratama', 'eka@example.com', 'hashed_password_5', '081200000005'),
-    (6, 'Farah Nabila', 'farah@example.com', 'hashed_password_6', '081200000006'),
-    (7, 'Gilang Ramadhan', 'gilang@example.com', 'hashed_password_7', '081200000007'),
-    (8, 'Hana Puspita', 'hana@example.com', 'hashed_password_8', '081200000008'),
-    (9, 'Intan Maharani', 'intan@example.com', 'hashed_password_9', '081200000009'),
-    (10, 'Joko Wijaya', 'joko@example.com', 'hashed_password_10', '081200000010');
-
+    (1, 'Ahmad', 'Ahmad@example.com', '12345678', '081200000001'),
+    (2, 'Qeis', 'Qeis@example.com', '12345678', '081200000002'),
+    (3, 'Ruviera', 'Ruviera@example.com', '12345678', '081200000003'),
+    (4, 'Alvaro', 'Alvaro@example.com', '12345678', '081200000004'),
+    (5, 'Zalfa', 'Zalfa@example.com', '12345678', '081200000005'),
+    (6, 'Ahabadin', 'Ahabadin@example.com', '12345678', '081200000006'),
+    (7, 'Salman', 'Salman@example.com', '12345678', '081200000007'),
+    (8, 'Newt', 'Newt@example.com', '12345678', '081200000008'),
+    (9, 'Thomas', 'Thomas@example.com', '12345678', '081200000009'),
+    (10, 'Adinda', 'Adinda@example.com', '12345678', '081200000010');
 INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
     (1, 1, 'A01', 150000.00, 'available'),
     (2, 2, 'A02', 160000.00, 'available'),
@@ -49,26 +41,26 @@ INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
 INSERT INTO permissions (id_permission, id_role, nama_permission) VALUES
     (1, 1, 'manage_users'),
     (2, 1, 'manage_roles'),
-    (3, 2, 'manage_branches'),
-    (4, 2, 'manage_tables'),
-    (5, 3, 'manage_schedules'),
-    (6, 4, 'manage_payments'),
-    (7, 5, 'process_transactions'),
-    (8, 6, 'handle_reservations'),
-    (9, 9, 'view_reports'),
-    (10, 10, 'handle_support_tickets');
+    (3, 1, 'view_reports'),
+    (4, 2, 'manage_branches'),
+    (5, 2, 'manage_tables'),
+    (6, 2, 'manage_schedules'),
+    (7, 2, 'manage_payments'),
+    (8, 3, 'create_reservations'),
+    (9, 3, 'view_reservations'),
+    (10, 3, 'request_refunds');
 
 INSERT INTO user_roles (id_user, id_role) VALUES
     (1, 1),
     (2, 2),
     (3, 3),
-    (4, 4),
-    (5, 5),
-    (6, 6),
-    (7, 7),
-    (8, 8),
-    (9, 9),
-    (10, 10);
+    (4, 3),
+    (5, 2),
+    (6, 3),
+    (7, 3),
+    (8, 2),
+    (9, 3),
+    (10, 3);
 
 INSERT INTO jadwal (id_jadwal, id_tempat, tanggal, jam_mulai, jam_selesai) VALUES
     (1, 1, '2026-04-10', '09:00:00', '11:00:00'),

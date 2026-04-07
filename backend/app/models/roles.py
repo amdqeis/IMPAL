@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import String
+from sqlalchemy import CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -8,6 +8,12 @@ from .base import Base
 
 class Role(Base):
     __tablename__ = "roles"
+    __table_args__ = (
+        CheckConstraint(
+            "nama_role IN ('user', 'admin', 'owner')",
+            name="ck_roles_nama_role_allowed",
+        ),
+    )
 
     id_role: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     nama_role: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
@@ -35,4 +41,3 @@ class Role(Base):
 
     def __repr__(self) -> str:
         return f"Role(id_role={self.id_role!r}, nama_role={self.nama_role!r})"
-
