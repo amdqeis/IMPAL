@@ -12,7 +12,7 @@ Markdown
 *Diagram Konteks yang menunjukkan aliran data global.*
 
 ### DFD Level 1
-![DFD Level 1](assets/DFD/DFD-Level-1-Proses-1.png)
+![DFD Level 1](assets/DFD/DFD-Level 1-Proses-1.png)
 *Detail proses bisnis dan integrasi database.*
 
 ### ERD
