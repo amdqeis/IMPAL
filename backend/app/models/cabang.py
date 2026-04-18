@@ -23,3 +23,4 @@ class Cabang(Base):
     def __repr__(self) -> str:
         return f"Cabang(id_cabang={self.id_cabang!r}, nama={self.nama!r})"
 
+

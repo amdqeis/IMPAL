@@ -3,6 +3,8 @@ from __future__ import annotations
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.security import hash_password, verify_password
+
 from .base import Base
 
 
@@ -41,6 +43,12 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+
+    def set_password(self, raw_password: str) -> None:
+        self.password = hash_password(raw_password)
+
+    def verify_password(self, raw_password: str) -> bool:
+        return verify_password(raw_password, self.password)
 
     def __repr__(self) -> str:
         return f"User(id_user={self.id_user!r}, email={self.email!r})"
