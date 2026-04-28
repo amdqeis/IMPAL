@@ -34,4 +34,3 @@ class Tempat(Base):
 
     def __repr__(self) -> str:
         return f"Tempat(id_tempat={self.id_tempat!r}, nomor_meja={self.nomor_meja!r})"
-

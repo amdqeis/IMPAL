@@ -42,4 +42,3 @@ class Reservasi(Base):
 
     def __repr__(self) -> str:
         return f"Reservasi(id_reservasi={self.id_reservasi!r}, status={self.status!r})"
-

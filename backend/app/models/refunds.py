@@ -27,4 +27,3 @@ class Refund(Base):
 
     def __repr__(self) -> str:
         return f"Refund(id_refund={self.id_refund!r}, status={self.status!r})"
-

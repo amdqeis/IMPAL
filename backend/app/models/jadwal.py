@@ -34,4 +34,3 @@ class Jadwal(Base):
 
     def __repr__(self) -> str:
         return f"Jadwal(id_jadwal={self.id_jadwal!r}, tanggal={self.tanggal!r})"
-

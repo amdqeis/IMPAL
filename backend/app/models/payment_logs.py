@@ -24,4 +24,3 @@ class PaymentLog(Base):
 
     def __repr__(self) -> str:
         return f"PaymentLog(id_log={self.id_log!r}, id_payment={self.id_payment!r})"
-
