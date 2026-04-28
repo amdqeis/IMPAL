@@ -9,16 +9,16 @@ INSERT INTO roles (id_role, nama_role) VALUES
     (3, 'user');
 
 INSERT INTO users (id_user, nama, email, password, no_hp) VALUES
-    (1, 'Ahmad', 'Ahmad@example.com', '12345678', '081200000001'),
-    (2, 'Qeis', 'Qeis@example.com', '12345678', '081200000002'),
-    (3, 'Ruviera', 'Ruviera@example.com', '12345678', '081200000003'),
-    (4, 'Alvaro', 'Alvaro@example.com', '12345678', '081200000004'),
-    (5, 'Zalfa', 'Zalfa@example.com', '12345678', '081200000005'),
-    (6, 'Ahabadin', 'Ahabadin@example.com', '12345678', '081200000006'),
-    (7, 'Salman', 'Salman@example.com', '12345678', '081200000007'),
-    (8, 'Newt', 'Newt@example.com', '12345678', '081200000008'),
-    (9, 'Thomas', 'Thomas@example.com', '12345678', '081200000009'),
-    (10, 'Adinda', 'Adinda@example.com', '12345678', '081200000010');
+    (1, 'Ahmad', 'ahmad@example.com', 'Password123', '081200000001'),
+    (2, 'Qeis', 'qeis@example.com', 'Password123', '081200000002'),
+    (3, 'Ruviera', 'ruviera@example.com', 'Password123', '081200000003'),
+    (4, 'Alvaro', 'alvaro@example.com', 'Password123', '081200000004'),
+    (5, 'Zalfa', 'zalfa@example.com', 'Password123', '081200000005'),
+    (6, 'Ahabadin', 'ahabadin@example.com', 'Password123', '081200000006'),
+    (7, 'Salman', 'salman@example.com', 'Password123', '081200000007'),
+    (8, 'Newt', 'newt@example.com', 'Password123', '081200000008'),
+    (9, 'Thomas', 'thomas@example.com', 'Password123', '081200000009'),
+    (10, 'Adinda', 'adinda@example.com', 'Password123', '081200000010');
 INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
     (1, 1, 'A01', 150000.00, 'available'),
     (2, 1, 'A02', 160000.00, 'available'),
@@ -34,24 +34,36 @@ INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
 INSERT INTO permissions (id_permission, id_role, nama_permission) VALUES
     (1, 1, 'manage_users'),
     (2, 1, 'manage_roles'),
-    (3, 1, 'view_reports'),
-    (4, 2, 'manage_branches'),
-    (5, 2, 'manage_tables'),
-    (6, 2, 'manage_schedules'),
-    (7, 2, 'manage_payments'),
-    (8, 3, 'create_reservations'),
-    (9, 3, 'view_reservations'),
-    (10, 3, 'request_refunds');
+    (3, 1, 'approve_refunds'),
+    (4, 1, 'view_reports'),
+    (5, 1, 'manage_reports'),
+    (6, 2, 'manage_branches'),
+    (7, 2, 'manage_tables'),
+    (8, 2, 'manage_schedules'),
+    (9, 2, 'manage_reservations'),
+    (10, 2, 'manage_payments'),
+    (11, 3, 'view_locations'),
+    (12, 3, 'view_schedules'),
+    (13, 3, 'create_reservations'),
+    (14, 3, 'view_reservations'),
+    (15, 3, 'create_payments'),
+    (16, 3, 'view_payments'),
+    (17, 3, 'request_refunds');
 
 INSERT INTO user_roles (id_user, id_role) VALUES
     (1, 1),
+    (1, 2),
+    (1, 3),
     (2, 2),
+    (2, 3),
     (3, 3),
     (4, 3),
     (5, 2),
+    (5, 3),
     (6, 3),
     (7, 3),
     (8, 2),
+    (8, 3),
     (9, 3),
     (10, 3);
 
