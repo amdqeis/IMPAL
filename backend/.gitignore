@@ -24,3 +24,6 @@ dist/
 .idea/
 .vscode/
 .DS_Store
+.codex
+
+app/db/seed_dummy_data.py
