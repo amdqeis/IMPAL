@@ -1,6 +1,6 @@
 -- Register akun pelanggan baru
 INSERT INTO users (nama, email, password, no_hp)
-VALUES ('Rahmat', 'rahmat@gmail.com', '12345678', '081234567890');
+VALUES ('Rahmat', 'rahmat@gmail.com', '$2b$12$va0BE/ii1IIn9Y7D9W/tTura6dtN9C14nJRuO/FUluk7Bo7kmoDwy', '081234567890');
 
 -- Tetapkan role user
 INSERT INTO user_roles (id_user, id_role)

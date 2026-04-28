@@ -3,7 +3,7 @@ import unittest
 
 from app import create_app
 from app.core.config import settings
-from app.core.security import create_access_token, decode_access_token
+from app.core.security import create_access_token, decode_access_token, hash_password, needs_password_rehash, verify_password
 
 
 class BackendSmokeTest(unittest.TestCase):
@@ -31,6 +31,15 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertEqual(payload["email"], "user@example.com")
         self.assertIn("view_reservations", payload["permissions"])
         self.assertIsNotNone(expires_at)
+
+    def test_password_hashing_uses_bcrypt(self) -> None:
+        hashed_password = hash_password("Password123")
+
+        self.assertTrue(hashed_password.startswith("$2b$"))
+        self.assertTrue(verify_password("Password123", hashed_password))
+        self.assertFalse(verify_password("WrongPassword123", hashed_password))
+        self.assertFalse(needs_password_rehash(hashed_password))
+        self.assertTrue(needs_password_rehash("Password123"))
 
 
 if __name__ == "__main__":

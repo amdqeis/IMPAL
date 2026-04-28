@@ -9,16 +9,16 @@ INSERT INTO roles (id_role, nama_role) VALUES
     (3, 'user');
 
 INSERT INTO users (id_user, nama, email, password, no_hp) VALUES
-    (1, 'Ahmad', 'ahmad@example.com', 'Password123', '081200000001'),
-    (2, 'Qeis', 'qeis@example.com', 'Password123', '081200000002'),
-    (3, 'Ruviera', 'ruviera@example.com', 'Password123', '081200000003'),
-    (4, 'Alvaro', 'alvaro@example.com', 'Password123', '081200000004'),
-    (5, 'Zalfa', 'zalfa@example.com', 'Password123', '081200000005'),
-    (6, 'Ahabadin', 'ahabadin@example.com', 'Password123', '081200000006'),
-    (7, 'Salman', 'salman@example.com', 'Password123', '081200000007'),
-    (8, 'Newt', 'newt@example.com', 'Password123', '081200000008'),
-    (9, 'Thomas', 'thomas@example.com', 'Password123', '081200000009'),
-    (10, 'Adinda', 'adinda@example.com', 'Password123', '081200000010');
+    (1, 'Ahmad', 'ahmad@example.com', '$2b$12$5AgT2FmeNZSE3K5FyY.NROU1qImksEXuTZ0p/Tln./pIRmO1pPwTq', '081200000001'),
+    (2, 'Qeis', 'qeis@example.com', '$2b$12$THR/Xe6WRec9At9LLG0whuKPSNd/VahmOS7bS0ASeWivMCLEbXlaq', '081200000002'),
+    (3, 'Ruviera', 'ruviera@example.com', '$2b$12$l3DNWPJSK80cLwHAz6QK3u656pn1Kp7Hbo5.zwLDF27rS6DwQLXwO', '081200000003'),
+    (4, 'Alvaro', 'alvaro@example.com', '$2b$12$muRNUHEOhNhe4VYWwaQXO../IL9iarp8E3AolJJX8vjJlz61KiM/i', '081200000004'),
+    (5, 'Zalfa', 'zalfa@example.com', '$2b$12$pm9apBBT7AC2FN1r30vUXe0bkmZaMgMaz9KeTfdbEahn0AFJy/Kk2', '081200000005'),
+    (6, 'Ahabadin', 'ahabadin@example.com', '$2b$12$VYj.LHL79FpCu1fBrY/Zw.Lh7WjkTzQhZSkwWXPD5C4EVe27WREfe', '081200000006'),
+    (7, 'Salman', 'salman@example.com', '$2b$12$LWGnnsWhi1PvZUk4XwPBjuzfw4LZrh.s0jXAwoWKzpE9qQ17Cr9uu', '081200000007'),
+    (8, 'Newt', 'newt@example.com', '$2b$12$3bemNSfVDTu75qWjg8t57e5KUjD42KhbJfKpiabCgrh21UVYdE0D2', '081200000008'),
+    (9, 'Thomas', 'thomas@example.com', '$2b$12$ExEPSMI82oopGYOMewdP0uU5OGFxxr3JvbF4MfI5xqfwQ8xmZGIAu', '081200000009'),
+    (10, 'Adinda', 'adinda@example.com', '$2b$12$GMnTPYzdtmbwVog4fVSVWuYAnB7wvoJCo3Ny58AmLXVAvWcgEP0da', '081200000010');
 INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
     (1, 1, 'A01', 150000.00, 'available'),
     (2, 1, 'A02', 160000.00, 'available'),
