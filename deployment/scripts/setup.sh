@@ -5,6 +5,7 @@
 
 set -euo pipefail
 
+DEPLOY_APP_NAME="${DEPLOY_APP_NAME:-}"
 APP_NAME="${APP_NAME:-impal}"
 PROJECT_DIR="${PROJECT_DIR:-/var/www/app}"
 FRONTEND_DIR="${FRONTEND_DIR:-frontend}"
@@ -56,6 +57,10 @@ load_dotenv_file() {
 
         if [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
             key="${BASH_REMATCH[1]}"
+            # APP_NAME belongs to the FastAPI app. Use DEPLOY_APP_NAME for
+            # service/socket/nginx names so backend display names may contain spaces.
+            [ "${key}" = "APP_NAME" ] && continue
+
             value="${BASH_REMATCH[2]}"
             value="${value#"${value%%[![:space:]]*}"}"
             value="${value%"${value##*[![:space:]]}"}"
@@ -72,6 +77,14 @@ load_dotenv_file() {
 }
 
 refresh_derived_paths() {
+    if [ -n "${DEPLOY_APP_NAME}" ]; then
+        APP_NAME="${DEPLOY_APP_NAME}"
+    elif [[ ! "${APP_NAME:-}" =~ ^[A-Za-z0-9_.@-]+$ ]]; then
+        APP_NAME="impal"
+    else
+        APP_NAME="${APP_NAME:-impal}"
+    fi
+
     RUN_DIR="${RUN_DIR:-/run/${APP_NAME}}"
     LOG_DIR="${LOG_DIR:-/var/log/${APP_NAME}}"
     NGINX_SITE_NAME="${NGINX_SITE_NAME:-${APP_NAME}}"
@@ -86,10 +99,11 @@ refresh_derived_paths() {
 load_env_files() {
     local file
     local candidates=(
-        "${ENV_FILE:-}"
+        "${PROJECT_DIR}/${BACKEND_DIR}/.env"
         "${PROJECT_DIR}/.env"
         "${PROJECT_DIR}/deployment/.env"
         "${PROJECT_DIR}/deployment/.env.production"
+        "${ENV_FILE:-}"
     )
 
     for file in "${candidates[@]}"; do
@@ -104,7 +118,7 @@ load_env_files() {
 
 validate_config() {
     [ -n "${APP_NAME}" ] || fail "APP_NAME kosong."
-    [[ "${APP_NAME}" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "APP_NAME hanya boleh berisi huruf, angka, titik, underscore, @, dan tanda minus."
+    [[ "${APP_NAME}" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "DEPLOY_APP_NAME hanya boleh berisi huruf, angka, titik, underscore, @, dan tanda minus."
 }
 
 install_server_packages() {

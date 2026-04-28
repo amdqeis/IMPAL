@@ -5,6 +5,7 @@
 
 set -euo pipefail
 
+DEPLOY_APP_NAME="${DEPLOY_APP_NAME:-}"
 APP_NAME="${APP_NAME:-impal}"
 PROJECT_DIR="${PROJECT_DIR:-/var/www/app}"
 FRONTEND_DIR="${FRONTEND_DIR:-frontend}"
@@ -65,6 +66,10 @@ load_dotenv_file() {
 
         if [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
             key="${BASH_REMATCH[1]}"
+            # APP_NAME is read by FastAPI as the backend display name. Keep it
+            # out of deploy naming; set DEPLOY_APP_NAME for service/socket names.
+            [ "${key}" = "APP_NAME" ] && continue
+
             value="${BASH_REMATCH[2]}"
             value="${value#"${value%%[![:space:]]*}"}"
             value="${value%"${value##*[![:space:]]}"}"
@@ -81,6 +86,14 @@ load_dotenv_file() {
 }
 
 refresh_derived_paths() {
+    if [ -n "${DEPLOY_APP_NAME}" ]; then
+        APP_NAME="${DEPLOY_APP_NAME}"
+    elif [[ ! "${APP_NAME:-}" =~ ^[A-Za-z0-9_.@-]+$ ]]; then
+        APP_NAME="impal"
+    else
+        APP_NAME="${APP_NAME:-impal}"
+    fi
+
     RUN_DIR="${RUN_DIR:-/run/${APP_NAME}}"
     LOG_DIR="${LOG_DIR:-/var/log/${APP_NAME}}"
     BACKEND_SOCKET="${BACKEND_SOCKET:-${RUN_DIR}/backend.sock}"
@@ -95,10 +108,11 @@ refresh_derived_paths() {
 load_env_files() {
     local file
     local candidates=(
-        "${ENV_FILE:-}"
+        "${PROJECT_DIR}/${BACKEND_DIR}/.env"
         "${PROJECT_DIR}/.env"
         "${PROJECT_DIR}/deployment/.env"
         "${PROJECT_DIR}/deployment/.env.production"
+        "${ENV_FILE:-}"
     )
 
     for file in "${candidates[@]}"; do
@@ -114,7 +128,7 @@ load_env_files() {
 
 validate_config() {
     [ -n "${APP_NAME}" ] || fail "APP_NAME kosong."
-    [[ "${APP_NAME}" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "APP_NAME hanya boleh berisi huruf, angka, titik, underscore, @, dan tanda minus."
+    [[ "${APP_NAME}" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "DEPLOY_APP_NAME hanya boleh berisi huruf, angka, titik, underscore, @, dan tanda minus."
     [ -n "${DOMAIN}" ] || fail "DOMAIN wajib di-set untuk Nginx/SSL."
     [ -n "${PROJECT_DIR}" ] || fail "PROJECT_DIR kosong."
     [ -n "${FRONTEND_DIR}" ] || fail "FRONTEND_DIR kosong."
@@ -124,6 +138,10 @@ validate_config() {
     if [ "${REQUIRE_DATABASE_URL}" = "true" ] && [ -z "${DATABASE_URL:-}" ]; then
         fail "DATABASE_URL wajib untuk backend. Set di env file, atau pakai REQUIRE_DATABASE_URL=false jika aplikasi tidak membutuhkannya."
     fi
+
+    FRONTEND_URL="${FRONTEND_URL:-https://${DOMAIN}}"
+    NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-/api}"
+    export FRONTEND_URL NEXT_PUBLIC_API_BASE_URL
 }
 
 absolute_path() {
@@ -282,6 +300,7 @@ User=${SERVICE_USER}
 Group=${SERVICE_GROUP}
 WorkingDirectory=${backend_path}
 Environment=PYTHONUNBUFFERED=1
+Environment="FRONTEND_URL=${FRONTEND_URL}"
 EnvironmentFile=-${env_file}
 RuntimeDirectory=${APP_NAME}
 RuntimeDirectoryMode=2775
@@ -308,6 +327,7 @@ WorkingDirectory=${frontend_path}
 Environment=NODE_ENV=production
 Environment=NEXT_PROJECT_DIR=${frontend_path}
 Environment=NEXT_SOCKET_PATH=${FRONTEND_SOCKET}
+Environment="NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}"
 EnvironmentFile=-${env_file}
 RuntimeDirectory=${APP_NAME}
 RuntimeDirectoryMode=2775
