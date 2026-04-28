@@ -5,7 +5,15 @@ def create_app():
     from app.api import api_router
     from app.core.config import settings
 
-    app = FastAPI(title=settings.app_name, debug=settings.app_debug)
+    app = FastAPI(
+        title=settings.app_name,
+        debug=settings.app_debug,
+        description=(
+            "API reservasi IMPAL dengan JWT authentication, permission-based access control, "
+            "dan dokumentasi OpenAPI per domain."
+        ),
+        version="1.0.0",
+    )
 
     if settings.CORS_ORIGINS:
         app.add_middleware(
@@ -18,8 +26,14 @@ def create_app():
 
     app.include_router(api_router, prefix="/api")
 
-    @app.get("/", tags=["healthcheck"])
+    @app.get(
+        "/",
+        tags=["healthcheck"],
+        summary="Healthcheck API",
+        description="Memastikan aplikasi FastAPI aktif dan dapat menerima request.",
+    )
     def read_root() -> dict[str, str]:
+        """Return a simple API health message."""
         return {"message": "IMPAL Backend API aktif"}
 
     return app
