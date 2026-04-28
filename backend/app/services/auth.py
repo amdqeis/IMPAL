@@ -59,10 +59,9 @@ def build_auth_response(
         message=message,
     )
 
-
 def register_user(db: Session, payload: UserCreate) -> AuthResponse:
     """Register a user, assign the default user role, and return an access token."""
-    existing_user = user_repo.get_user_by_email(db, payload.email)
+    existing_user = find_user_by_email(db, payload.email)
     if existing_user:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email sudah terdaftar")
 
@@ -89,21 +88,13 @@ def register_user(db: Session, payload: UserCreate) -> AuthResponse:
     db.refresh(user)
     return build_auth_response(user, message="Registrasi berhasil", include_token=True)
 
-
 def login_user(db: Session, payload: LoginRequest) -> AuthResponse:
     """Authenticate a user and issue a JWT access token."""
-    user = user_repo.get_user_by_email(db, payload.email)
-    if not user or not user.verify_password(payload.password):
+    user = find_user_by_email(db, payload.email)
+    if user is None or not validate_user_password(db, user, payload.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email atau password tidak valid")
 
-    if needs_password_rehash(user.password):
-        user.set_password(payload.password)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
     return build_auth_response(user, message="Login berhasil", include_token=True)
-
 
 def get_user_access(db: Session, user_id: int) -> AuthResponse:
     """Return roles and permissions for a user."""
@@ -111,3 +102,13 @@ def get_user_access(db: Session, user_id: int) -> AuthResponse:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
     return build_auth_response(user, message="Akses user berhasil dimuat")
+
+def find_user_by_email(db: Session, email: str) -> User | None:
+    """Find a user by email."""
+    return user_repo.get_user_by_email(db, email)
+
+def validate_user_password(db: Session, user: User, password: str) -> bool:
+    """Validate a user's email and password."""
+    if not user:
+        return False
+    return user.verify_password(password)

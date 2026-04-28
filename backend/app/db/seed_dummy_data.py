@@ -266,7 +266,7 @@ def seed_dummy_data() -> None:
             Refund(id_payment=payments[7].id_payment, amount=Decimal("50000.00"), status="approved"),
             Refund(id_payment=payments[8].id_payment, amount=Decimal("60000.00"), status="pending"),
             Refund(id_payment=payments[9].id_payment, amount=Decimal("120000.00"), status="pending"),
-        ]
+        ]j
         db.add_all(refunds)
 
         db.commit()

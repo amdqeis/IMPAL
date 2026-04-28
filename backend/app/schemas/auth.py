@@ -24,7 +24,7 @@ class UserCreate(BaseModel):
     nama: str = Field(..., min_length=1, max_length=255)
     email: str = Field(..., min_length=3, max_length=255)
     password: str = Field(..., min_length=8)
-    no_hp: str = Field(..., min_length=5, max_length=20)
+    no_hp: str = Field(..., min_length=11, max_length=12)
 
     @field_validator("password")
     @classmethod
