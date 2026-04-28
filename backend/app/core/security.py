@@ -4,6 +4,10 @@ import base64
 import hashlib
 import hmac
 import os
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from jose import jwt
 
 try:
     import bcrypt
@@ -79,3 +83,29 @@ def needs_password_rehash(hashed_password: str) -> bool:
     if bcrypt is not None:
         return not hashed_password.startswith(_BCRYPT_PREFIXES)
     return not hashed_password.startswith(f"{PBKDF2_SCHEME}$")
+
+
+def create_access_token(
+    *,
+    subject: str,
+    secret_key: str,
+    algorithm: str,
+    expires_delta: timedelta,
+    claims: dict[str, Any] | None = None,
+) -> tuple[str, datetime]:
+    """Create a signed JWT access token and return it with its expiry time."""
+    now = datetime.now(UTC)
+    expires_at = now + expires_delta
+    payload: dict[str, Any] = {
+        "sub": subject,
+        "iat": int(now.timestamp()),
+        "exp": expires_at,
+    }
+    if claims:
+        payload.update(claims)
+    return jwt.encode(payload, secret_key, algorithm=algorithm), expires_at
+
+
+def decode_access_token(token: str, *, secret_key: str, algorithms: list[str]) -> dict[str, Any]:
+    """Decode and validate a JWT access token."""
+    return jwt.decode(token, secret_key, algorithms=algorithms)

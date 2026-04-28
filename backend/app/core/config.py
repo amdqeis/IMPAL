@@ -40,6 +40,8 @@ class Config:
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
 
         self.SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
+        self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+        self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
         self.SESSION_COOKIE_HTTPONLY = True
         self.SESSION_COOKIE_SECURE = _to_bool(
             os.getenv("SESSION_COOKIE_SECURE"),
@@ -72,6 +74,14 @@ class Config:
     @property
     def app_debug(self) -> bool:
         return self.DEBUG
+
+    @property
+    def jwt_algorithm(self) -> str:
+        return self.JWT_ALGORITHM
+
+    @property
+    def access_token_expire_minutes(self) -> int:
+        return self.ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 class DevelopmentConfig(Config):
