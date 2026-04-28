@@ -45,6 +45,7 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 - **Deployment:** Virtual Private Server (VPS)
 - **Access Token:** JWT
 - **Middleware:** Nginx/PM2
+- **CI/CD:** Github Actions
 ---
 
 ## 📂 Cara Instalasi
