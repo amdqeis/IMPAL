@@ -1,37 +1,7 @@
-# Install this file to /etc/systemd/system/fastapi.service.
-# It runs FastAPI behind Gunicorn and binds only to localhost:8000.
-
-[Unit]
-Description=FastAPI application served by Gunicorn
-After=network-online.target postgresql.service
-Wants=network-online.target postgresql.service
-
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/app/backend
-
-# Load runtime settings from the backend environment file when it exists.
-EnvironmentFile=-/var/www/app/backend/.env
-Environment=PYTHONUNBUFFERED=1
-Environment=PATH=/var/www/app/backend/.venv/bin
-
-# Gunicorn uses Uvicorn workers so FastAPI gets ASGI support in production.
-ExecStart=/var/www/app/backend/.venv/bin/gunicorn \
-    --workers 3 \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --bind 127.0.0.1:8000 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    main:app
-
-Restart=always
-RestartSec=5
-TimeoutStartSec=30
-TimeoutStopSec=30
-KillSignal=SIGQUIT
-
-[Install]
-WantedBy=multi-user.target
+# Reference only. setup.sh generates the active service at:
+# /etc/systemd/system/sibooking-backend.service
+#
+# The generated service uses:
+# - WorkingDirectory=/var/www/app/sibooking/backend
+# - EnvironmentFile=/var/www/app/sibooking/backend/.env
+# - Gunicorn/Uvicorn bound to unix:/run/sibooking/backend.sock
