@@ -1,86 +1,113 @@
-# Deployment Guide
+# Deployment VPS Ubuntu
 
-Production layout:
+Deployment ini menjalankan aplikasi secara host-native:
+
+- FastAPI berjalan sebagai service systemd di `127.0.0.1:<BACKEND_PORT>`.
+- Next.js production server berjalan sebagai service systemd di `127.0.0.1:<FRONTEND_PORT>`.
+- Nginx menjadi reverse proxy publik untuk HTTP/HTTPS.
+- PostgreSQL berjalan di host VPS.
+- SSL dibuat dan direnew oleh Certbot/Let's Encrypt.
+
+Struktur target VPS:
 
 ```text
-/var/www/app/
-└── sibooking/
-    ├── backend/
-    │   └── .env
-    ├── frontend/
-    │   └── .env.production
-    └── deployment/
-        ├── .env
-        └── scripts/
-            ├── setup.sh
-            └── deploy.sh
+/var/www/app/sibooking
+├── backend
+│   └── .env
+├── frontend
+│   └── .env.production
+└── deployment
+    ├── setup.sh
+    ├── deploy.sh
+    ├── env.example
+    ├── nginx.conf.template
+    ├── backend.service.template
+    └── frontend.service.template
 ```
 
-Runtime stack:
+## Setup Awal VPS
 
-- Frontend: Next.js served by systemd through a Unix socket.
-- Backend: FastAPI served by Gunicorn/Uvicorn through a Unix socket.
-- Reverse proxy: Nginx.
-- SSL: Certbot/Let's Encrypt.
-- Database: PostgreSQL on the VPS.
-
-## 1. Initial VPS Setup
-
-Clone or place the repository at the app path:
+Clone repo ke folder target:
 
 ```bash
 sudo mkdir -p /var/www/app
-sudo chown -R "$USER":"$USER" /var/www/app
-git clone <your-repository-url> /var/www/app/sibooking
+sudo git clone <repo-url> /var/www/app/sibooking
+cd /var/www/app/sibooking
 ```
 
-Create separate env files:
+Buat konfigurasi deployment:
 
 ```bash
-cp /var/www/app/sibooking/deployment/.env.example /var/www/app/sibooking/deployment/.env
-cp /var/www/app/sibooking/backend/.env.example /var/www/app/sibooking/backend/.env
-cp /var/www/app/sibooking/frontend/.env.production.example /var/www/app/sibooking/frontend/.env.production
+sudo cp deployment/env.example deployment/.env
+sudo chmod 600 deployment/.env
+sudo nano deployment/.env
 ```
 
-Edit each file on the VPS:
+Minimal wajib diisi:
 
-- `deployment/.env`: server/deployment values such as `DOMAIN`, `SSL_EMAIL`, `APPNAME`, service user, branch, and optional PostgreSQL bootstrap settings.
-- `backend/.env`: backend-only secrets such as `DATABASE_URL`, `SECRET_KEY`, JWT/session/mail config, and `FRONTEND_URL`.
-- `frontend/.env.production`: public Next.js values such as `NEXT_PUBLIC_API_BASE_URL`.
+- `DOMAIN`
+- `SSL_EMAIL`
+- `DATABASE_PASSWORD`
+- sesuaikan `APP_OWNER` jika user deploy berbeda
 
-Run setup once, and safely rerun it when server configuration changes:
+Jalankan setup server:
+
+```bash
+sudo bash deployment/setup.sh
+```
+
+`setup.sh` akan install dependency Ubuntu, membuat user aplikasi bila belum ada, membuat database PostgreSQL jika belum ada, memilih port internal kosong, menulis konfigurasi Nginx, mengaktifkan UFW, dan membuat SSL bila DNS domain sudah mengarah ke VPS.
+
+## Deploy / Update Aplikasi
 
 ```bash
 cd /var/www/app/sibooking
-sudo bash deployment/scripts/setup.sh
+sudo bash deployment/deploy.sh
 ```
 
-`setup.sh` installs server dependencies, creates folders/users, configures PostgreSQL when requested, writes Nginx and systemd config, and provisions SSL when the domain is ready.
+`deploy.sh` akan:
 
-## 2. Manual Deploy
+- pull update Git dari `GIT_BRANCH`;
+- membuat `backend/.env` dan `frontend/.env.production` dari file example jika belum ada;
+- install dependency backend ke `.venv`;
+- menjalankan Alembic jika `backend/alembic.ini` tersedia;
+- install dan build frontend Next.js;
+- render service systemd backend/frontend;
+- restart service dan reload Nginx;
+- menampilkan status service.
 
-Run deploy after pushing code:
+## File Environment
+
+Deployment/server:
+
+```text
+deployment/.env
+```
+
+Backend secret:
+
+```text
+backend/.env
+```
+
+Frontend public runtime config:
+
+```text
+frontend/.env.production
+```
+
+Jangan menaruh database password atau secret backend di env frontend. Variable dengan prefix `NEXT_PUBLIC_` akan terlihat di browser.
+
+## Debugging
 
 ```bash
-cd /var/www/app/sibooking
-bash deployment/scripts/deploy.sh
+sudo systemctl status sibooking-backend sibooking-frontend --no-pager
+sudo journalctl -u sibooking-backend -f
+sudo journalctl -u sibooking-frontend -f
+sudo nginx -t
+curl http://127.0.0.1:<BACKEND_PORT>/health
+curl -I https://<DOMAIN>
+sudo certbot renew --dry-run
 ```
 
-`deploy.sh` updates the repository, installs backend dependencies, runs Alembic migrations when `backend/alembic.ini` exists, builds the Next.js frontend, restarts the backend/frontend services, and reloads Nginx after `nginx -t`.
-
-## 3. Important Env Rules
-
-- Do not combine all env values into one file.
-- Do not put `DATABASE_URL`, `SECRET_KEY`, mail passwords, or other backend secrets in the frontend env file.
-- Frontend public values must use the Next.js `NEXT_PUBLIC_` prefix.
-- Shell-readable env values with spaces must be quoted, for example `APP_NAME="Sibooking Backend"`.
-
-## 4. Checks
-
-```bash
-bash -n deployment/scripts/setup.sh
-bash -n deployment/scripts/deploy.sh
-systemctl status sibooking-backend.service
-systemctl status sibooking-frontend.service
-nginx -t
-```
+Port internal disimpan di `deployment/.env` sebagai `BACKEND_PORT` dan `FRONTEND_PORT`. Port ini tidak perlu dibuka di firewall karena hanya Nginx yang menerima traffic publik di port 80/443.

@@ -1,7 +1,0 @@
-# Reference only. setup.sh generates the active service at:
-# /etc/systemd/system/sibooking-backend.service
-#
-# The generated service uses:
-# - WorkingDirectory=/var/www/app/sibooking/backend
-# - EnvironmentFile=/var/www/app/sibooking/backend/.env
-# - Gunicorn/Uvicorn bound to unix:/run/sibooking/backend.sock
