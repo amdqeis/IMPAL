@@ -1,3 +1,9 @@
 sibooking.keispace.cloud {
-    reverse_proxy sibooking_backend:8000
+    handle_path /api/* {
+        reverse_proxy sibooking_backend:8000
+    }
+
+    handle {
+        reverse_proxy sibooking_frontend:3000
+    }
 }

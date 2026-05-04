@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: sibooking-backend
+    container_name: sibooking_backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    networks:
+      - sibooking_network
+
+  frontend:
+    build:
+      context: ./frontend
+    image: sibooking-frontend
+    container_name: sibooking_frontend
+    restart: always
+    networks:
+      - sibooking_network
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    container_name: sibooking_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - sibooking_caddy_data:/data
+      - sibooking_caddy_config:/config
+    networks:
+      - sibooking_network
+    depends_on:
+      - backend
+      - frontend
+
+networks:
+  sibooking_network:
+    name: sibooking_network
+
+volumes:
+  sibooking_caddy_data:
+  sibooking_caddy_config:
