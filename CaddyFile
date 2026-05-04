@@ -1,0 +1,4 @@
+sibooking.keispace.cloud, www.sibooking.keispace.cloud {
+    reverse_proxy /api/* sibooking_backend:8000
+    reverse_proxy sibooking_frontend:3000
+}
