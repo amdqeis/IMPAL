@@ -67,17 +67,17 @@ INSERT INTO user_roles (id_user, id_role) VALUES
     (9, 3),
     (10, 3);
 
-INSERT INTO jadwal (id_jadwal, id_tempat, tanggal, jam_mulai, jam_selesai) VALUES
-    (1, 1, '2026-04-10', '09:00:00', '11:00:00'),
-    (2, 2, '2026-04-10', '11:00:00', '13:00:00'),
-    (3, 3, '2026-04-11', '13:00:00', '15:00:00'),
-    (4, 4, '2026-04-11', '15:00:00', '17:00:00'),
-    (5, 5, '2026-04-12', '10:00:00', '12:00:00'),
-    (6, 6, '2026-04-12', '12:00:00', '14:00:00'),
-    (7, 7, '2026-04-13', '14:00:00', '16:00:00'),
-    (8, 8, '2026-04-13', '16:00:00', '18:00:00'),
-    (9, 9, '2026-04-14', '18:00:00', '20:00:00'),
-    (10, 10, '2026-04-14', '20:00:00', '22:00:00');
+INSERT INTO jadwal (id_jadwal, id_tempat, jam_mulai, jam_selesai) VALUES
+    (1, 1, '09:00:00', '11:00:00'),
+    (2, 2, '11:00:00', '13:00:00'),
+    (3, 3, '13:00:00', '15:00:00'),
+    (4, 4, '15:00:00', '17:00:00'),
+    (5, 5, '10:00:00', '12:00:00'),
+    (6, 6, '12:00:00', '14:00:00'),
+    (7, 7, '14:00:00', '16:00:00'),
+    (8, 8, '16:00:00', '18:00:00'),
+    (9, 9, '18:00:00', '20:00:00'),
+    (10, 10, '20:00:00', '22:00:00');
 
 INSERT INTO laporan (id_laporan, tipe, lampiran, dibuat_oleh) VALUES
     (1, 'harian', 'laporan_harian_01.pdf', 1),
@@ -91,17 +91,17 @@ INSERT INTO laporan (id_laporan, tipe, lampiran, dibuat_oleh) VALUES
     (9, 'bulanan', 'laporan_bulanan_09.pdf', 9),
     (10, 'audit', 'laporan_audit_10.pdf', 10);
 
-INSERT INTO reservasi (id_reservasi, id_user, id_jadwal, status, total_harga) VALUES
-    (1, 1, 1, 'confirmed', 150000.00),
-    (2, 2, 2, 'pending', 160000.00),
-    (3, 3, 3, 'cancelled', 170000.00),
-    (4, 4, 4, 'confirmed', 180000.00),
-    (5, 5, 5, 'completed', 190000.00),
-    (6, 6, 6, 'pending', 200000.00),
-    (7, 7, 7, 'confirmed', 210000.00),
-    (8, 8, 8, 'completed', 220000.00),
-    (9, 9, 9, 'confirmed', 230000.00),
-    (10, 10, 10, 'pending', 350000.00);
+INSERT INTO reservasi (id_reservasi, id_user, id_tempat, id_jadwal, tanggal, status, total_harga) VALUES
+    (1, 1, 1, 1, '2026-04-10', 'confirmed', 150000.00),
+    (2, 2, 2, 2, '2026-04-10', 'pending', 160000.00),
+    (3, 3, 3, 3, '2026-04-11', 'cancelled', 170000.00),
+    (4, 4, 4, 4, '2026-04-11', 'confirmed', 180000.00),
+    (5, 5, 5, 5, '2026-04-12', 'completed', 190000.00),
+    (6, 6, 6, 6, '2026-04-12', 'pending', 200000.00),
+    (7, 7, 7, 7, '2026-04-13', 'confirmed', 210000.00),
+    (8, 8, 8, 8, '2026-04-13', 'completed', 220000.00),
+    (9, 9, 9, 9, '2026-04-14', 'confirmed', 230000.00),
+    (10, 10, 10, 10, '2026-04-14', 'pending', 350000.00);
 
 INSERT INTO payments (id_payment, id_reservasi, amount, status) VALUES
     (1, 1, 150000.00, 'paid'),

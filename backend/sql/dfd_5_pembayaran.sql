@@ -9,7 +9,7 @@ JOIN cabang c ON c.id_cabang = t.id_cabang
 WHERE u.email = 'Ahmad@example.com'
   AND t.nomor_meja = 'A02'
   AND c.nama = 'Cabang Jakarta'
-  AND j.tanggal = '2026-04-10'
+  AND r.tanggal = '2026-04-10'
   AND j.jam_mulai = '11:00:00'
 ORDER BY r.id_reservasi DESC
 LIMIT 1;
@@ -26,7 +26,7 @@ WHERE payments.id_reservasi = r.id_reservasi
   AND u.email = 'Ahmad@example.com'
   AND t.nomor_meja = 'A02'
   AND c.nama = 'Cabang Jakarta'
-  AND j.tanggal = '2026-04-10'
+  AND r.tanggal = '2026-04-10'
   AND j.jam_mulai = '11:00:00';
 
 -- Simpan log pembayaran
@@ -41,7 +41,7 @@ JOIN cabang c ON c.id_cabang = t.id_cabang
 WHERE u.email = 'Ahmad@example.com'
   AND t.nomor_meja = 'A02'
   AND c.nama = 'Cabang Jakarta'
-  AND j.tanggal = '2026-04-10'
+  AND r.tanggal = '2026-04-10'
   AND j.jam_mulai = '11:00:00'
 ORDER BY p.id_payment DESC
 LIMIT 1;
@@ -58,7 +58,7 @@ WHERE payments.id_reservasi = r.id_reservasi
   AND u.email = 'Ahmad@example.com'
   AND t.nomor_meja = 'A02'
   AND c.nama = 'Cabang Jakarta'
-  AND j.tanggal = '2026-04-10'
+  AND r.tanggal = '2026-04-10'
   AND j.jam_mulai = '11:00:00';
 
 -- Catat refund
@@ -73,7 +73,7 @@ JOIN cabang c ON c.id_cabang = t.id_cabang
 WHERE u.email = 'Ahmad@example.com'
   AND t.nomor_meja = 'A02'
   AND c.nama = 'Cabang Jakarta'
-  AND j.tanggal = '2026-04-10'
+  AND r.tanggal = '2026-04-10'
   AND j.jam_mulai = '11:00:00'
 ORDER BY p.id_payment DESC
 LIMIT 1;
@@ -91,5 +91,5 @@ WHERE refunds.id_payment = p.id_payment
   AND u.email = 'Ahmad@example.com'
   AND t.nomor_meja = 'A02'
   AND c.nama = 'Cabang Jakarta'
-  AND j.tanggal = '2026-04-10'
+  AND r.tanggal = '2026-04-10'
   AND j.jam_mulai = '11:00:00';

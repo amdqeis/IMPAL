@@ -64,7 +64,6 @@ class AuthRbacTest(unittest.TestCase):
         self.db.flush()
         jadwal = Jadwal(
             id_tempat=tempat.id_tempat,
-            tanggal=date(2026, 5, 1),
             jam_mulai=time(9, 0),
             jam_selesai=time(10, 0),
         )
@@ -114,7 +113,13 @@ class AuthRbacTest(unittest.TestCase):
         current_user = self._create_user("current@example.com")
         other_user = self._create_user("other@example.com")
         jadwal = self._create_jadwal()
-        payload = ReservasiCreate(id_user=other_user.id_user, id_jadwal=jadwal.id_jadwal, total_harga=100000)
+        payload = ReservasiCreate(
+            id_user=other_user.id_user,
+            id_tempat=jadwal.id_tempat,
+            id_jadwal=jadwal.id_jadwal,
+            tanggal=date(2026, 5, 1),
+            total_harga=100000,
+        )
 
         with self.assertRaises(HTTPException) as denied:
             reservasi_service.create_reservasi(self.db, payload, current_user=current_user)
