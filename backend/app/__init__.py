@@ -36,4 +36,14 @@ def create_app():
         """Return a simple API health message."""
         return {"message": "IMPAL Backend API aktif"}
 
+    @app.get(
+        "/health",
+        tags=["healthcheck"],
+        summary="Container healthcheck",
+        description="Endpoint ringan untuk Docker, CI/CD, dan reverse proxy checks.",
+    )
+    def healthcheck() -> dict[str, str]:
+        """Return a stable health response for deployment checks."""
+        return {"status": "ok"}
+
     return app

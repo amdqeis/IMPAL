@@ -34,6 +34,16 @@ def update_cabang(db: Session, cabang_id: int, payload: CabangUpdate) -> Cabang:
     return cabang
 
 
+def delete_cabang(db: Session, cabang_id: int) -> None:
+    """Delete a branch."""
+    cabang = repo.get_cabang(db, cabang_id)
+    if not cabang:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cabang tidak ditemukan")
+
+    db.delete(cabang)
+    db.commit()
+
+
 def list_tempat(db: Session, *, id_cabang: int | None = None, status_tempat: str | None = None) -> list[Tempat]:
     """Return tables filtered by branch or table status."""
     return repo.list_tempat(db, id_cabang=id_cabang, status_tempat=status_tempat)
@@ -49,6 +59,16 @@ def create_tempat(db: Session, payload: TempatCreate) -> Tempat:
     db.commit()
     db.refresh(tempat)
     return tempat
+
+
+def delete_tempat(db: Session, tempat_id: int) -> None:
+    """Delete a table."""
+    tempat = repo.get_tempat(db, tempat_id)
+    if not tempat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tempat tidak ditemukan")
+
+    db.delete(tempat)
+    db.commit()
 
 
 def update_tempat(db: Session, tempat_id: int, payload: TempatUpdate) -> Tempat:
