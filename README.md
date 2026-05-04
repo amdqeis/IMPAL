@@ -44,8 +44,8 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 - **Database:** PostgreSQL
 - **Deployment:** Virtual Private Server (VPS)
 - **Access Token:** JWT
-- **Middleware:** Nginx/PM2
-- **CI/CD:** Github Actions
+- **Middleware:** Docker
+- **CI/CD:** Github Actions - Docker Compose
 ---
 
 ## 📂 Cara Instalasi
