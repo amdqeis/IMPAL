@@ -183,16 +183,16 @@ def seed_dummy_data() -> None:
         )
 
         jadwal_list = [
-            Jadwal(id_tempat=tempat_list[0].id_tempat, tanggal=date(2026, 4, 10), jam_mulai=time(9, 0), jam_selesai=time(11, 0)),
-            Jadwal(id_tempat=tempat_list[1].id_tempat, tanggal=date(2026, 4, 10), jam_mulai=time(11, 0), jam_selesai=time(13, 0)),
-            Jadwal(id_tempat=tempat_list[2].id_tempat, tanggal=date(2026, 4, 11), jam_mulai=time(13, 0), jam_selesai=time(15, 0)),
-            Jadwal(id_tempat=tempat_list[3].id_tempat, tanggal=date(2026, 4, 11), jam_mulai=time(15, 0), jam_selesai=time(17, 0)),
-            Jadwal(id_tempat=tempat_list[4].id_tempat, tanggal=date(2026, 4, 12), jam_mulai=time(10, 0), jam_selesai=time(12, 0)),
-            Jadwal(id_tempat=tempat_list[5].id_tempat, tanggal=date(2026, 4, 12), jam_mulai=time(12, 0), jam_selesai=time(14, 0)),
-            Jadwal(id_tempat=tempat_list[6].id_tempat, tanggal=date(2026, 4, 13), jam_mulai=time(14, 0), jam_selesai=time(16, 0)),
-            Jadwal(id_tempat=tempat_list[7].id_tempat, tanggal=date(2026, 4, 13), jam_mulai=time(16, 0), jam_selesai=time(18, 0)),
-            Jadwal(id_tempat=tempat_list[8].id_tempat, tanggal=date(2026, 4, 14), jam_mulai=time(18, 0), jam_selesai=time(20, 0)),
-            Jadwal(id_tempat=tempat_list[9].id_tempat, tanggal=date(2026, 4, 14), jam_mulai=time(20, 0), jam_selesai=time(22, 0)),
+            Jadwal(id_tempat=tempat_list[0].id_tempat, jam_mulai=time(9, 0), jam_selesai=time(11, 0)),
+            Jadwal(id_tempat=tempat_list[1].id_tempat, jam_mulai=time(11, 0), jam_selesai=time(13, 0)),
+            Jadwal(id_tempat=tempat_list[2].id_tempat, jam_mulai=time(13, 0), jam_selesai=time(15, 0)),
+            Jadwal(id_tempat=tempat_list[3].id_tempat, jam_mulai=time(15, 0), jam_selesai=time(17, 0)),
+            Jadwal(id_tempat=tempat_list[4].id_tempat, jam_mulai=time(10, 0), jam_selesai=time(12, 0)),
+            Jadwal(id_tempat=tempat_list[5].id_tempat, jam_mulai=time(12, 0), jam_selesai=time(14, 0)),
+            Jadwal(id_tempat=tempat_list[6].id_tempat, jam_mulai=time(14, 0), jam_selesai=time(16, 0)),
+            Jadwal(id_tempat=tempat_list[7].id_tempat, jam_mulai=time(16, 0), jam_selesai=time(18, 0)),
+            Jadwal(id_tempat=tempat_list[8].id_tempat, jam_mulai=time(18, 0), jam_selesai=time(20, 0)),
+            Jadwal(id_tempat=tempat_list[9].id_tempat, jam_mulai=time(20, 0), jam_selesai=time(22, 0)),
         ]
         db.add_all(jadwal_list)
         db.flush()
@@ -212,16 +212,16 @@ def seed_dummy_data() -> None:
         db.add_all(laporan_list)
 
         reservasi_list = [
-            Reservasi(id_user=users[0].id_user, id_jadwal=jadwal_list[0].id_jadwal, status="confirmed", total_harga=Decimal("150000.00")),
-            Reservasi(id_user=users[1].id_user, id_jadwal=jadwal_list[1].id_jadwal, status="pending", total_harga=Decimal("160000.00")),
-            Reservasi(id_user=users[2].id_user, id_jadwal=jadwal_list[2].id_jadwal, status="cancelled", total_harga=Decimal("170000.00")),
-            Reservasi(id_user=users[3].id_user, id_jadwal=jadwal_list[3].id_jadwal, status="confirmed", total_harga=Decimal("180000.00")),
-            Reservasi(id_user=users[4].id_user, id_jadwal=jadwal_list[4].id_jadwal, status="completed", total_harga=Decimal("190000.00")),
-            Reservasi(id_user=users[5].id_user, id_jadwal=jadwal_list[5].id_jadwal, status="pending", total_harga=Decimal("200000.00")),
-            Reservasi(id_user=users[6].id_user, id_jadwal=jadwal_list[6].id_jadwal, status="confirmed", total_harga=Decimal("210000.00")),
-            Reservasi(id_user=users[7].id_user, id_jadwal=jadwal_list[7].id_jadwal, status="completed", total_harga=Decimal("220000.00")),
-            Reservasi(id_user=users[8].id_user, id_jadwal=jadwal_list[8].id_jadwal, status="confirmed", total_harga=Decimal("230000.00")),
-            Reservasi(id_user=users[9].id_user, id_jadwal=jadwal_list[9].id_jadwal, status="pending", total_harga=Decimal("350000.00")),
+            Reservasi(id_user=users[0].id_user, id_tempat=tempat_list[0].id_tempat, id_jadwal=jadwal_list[0].id_jadwal, tanggal=date(2026, 4, 10), status="confirmed", total_harga=Decimal("150000.00")),
+            Reservasi(id_user=users[1].id_user, id_tempat=tempat_list[1].id_tempat, id_jadwal=jadwal_list[1].id_jadwal, tanggal=date(2026, 4, 10), status="pending", total_harga=Decimal("160000.00")),
+            Reservasi(id_user=users[2].id_user, id_tempat=tempat_list[2].id_tempat, id_jadwal=jadwal_list[2].id_jadwal, tanggal=date(2026, 4, 11), status="cancelled", total_harga=Decimal("170000.00")),
+            Reservasi(id_user=users[3].id_user, id_tempat=tempat_list[3].id_tempat, id_jadwal=jadwal_list[3].id_jadwal, tanggal=date(2026, 4, 11), status="confirmed", total_harga=Decimal("180000.00")),
+            Reservasi(id_user=users[4].id_user, id_tempat=tempat_list[4].id_tempat, id_jadwal=jadwal_list[4].id_jadwal, tanggal=date(2026, 4, 12), status="completed", total_harga=Decimal("190000.00")),
+            Reservasi(id_user=users[5].id_user, id_tempat=tempat_list[5].id_tempat, id_jadwal=jadwal_list[5].id_jadwal, tanggal=date(2026, 4, 12), status="pending", total_harga=Decimal("200000.00")),
+            Reservasi(id_user=users[6].id_user, id_tempat=tempat_list[6].id_tempat, id_jadwal=jadwal_list[6].id_jadwal, tanggal=date(2026, 4, 13), status="confirmed", total_harga=Decimal("210000.00")),
+            Reservasi(id_user=users[7].id_user, id_tempat=tempat_list[7].id_tempat, id_jadwal=jadwal_list[7].id_jadwal, tanggal=date(2026, 4, 13), status="completed", total_harga=Decimal("220000.00")),
+            Reservasi(id_user=users[8].id_user, id_tempat=tempat_list[8].id_tempat, id_jadwal=jadwal_list[8].id_jadwal, tanggal=date(2026, 4, 14), status="confirmed", total_harga=Decimal("230000.00")),
+            Reservasi(id_user=users[9].id_user, id_tempat=tempat_list[9].id_tempat, id_jadwal=jadwal_list[9].id_jadwal, tanggal=date(2026, 4, 14), status="pending", total_harga=Decimal("350000.00")),
         ]
         db.add_all(reservasi_list)
         db.flush()
@@ -266,7 +266,7 @@ def seed_dummy_data() -> None:
             Refund(id_payment=payments[7].id_payment, amount=Decimal("50000.00"), status="approved"),
             Refund(id_payment=payments[8].id_payment, amount=Decimal("60000.00"), status="pending"),
             Refund(id_payment=payments[9].id_payment, amount=Decimal("120000.00"), status="pending"),
-        ]j
+        ]
         db.add_all(refunds)
 
         db.commit()

@@ -1,6 +1,6 @@
 from .auth import AuthResponse, LoginRequest, PermissionRead, RoleRead, UserCreate, UserRead
 from .common import COMMON_ERROR_RESPONSES, ErrorResponse
-from .jadwal import JadwalCreate, JadwalRead, JadwalUpdate
+from .jadwal import JadwalAvailabilityRead, JadwalCreate, JadwalRead, JadwalUpdate
 from .laporan import LaporanCreate, LaporanRead, LaporanUpdate
 from .master_data import CabangCreate, CabangRead, CabangUpdate, TempatCreate, TempatRead, TempatUpdate
 from .pembayaran import (
@@ -23,6 +23,7 @@ __all__ = [
     "COMMON_ERROR_RESPONSES",
     "ErrorResponse",
     "JadwalCreate",
+    "JadwalAvailabilityRead",
     "JadwalRead",
     "JadwalUpdate",
     "LaporanCreate",

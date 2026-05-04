@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric, String
+from sqlalchemy import Date, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -10,16 +11,32 @@ from .base import Base
 
 class Reservasi(Base):
     __tablename__ = "reservasi"
+    __table_args__ = (
+        Index(
+            "uq_reservasi_active_slot",
+            "id_tempat",
+            "id_jadwal",
+            "tanggal",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'confirmed')"),
+            sqlite_where=text("status IN ('pending', 'confirmed')"),
+        ),
+    )
 
     id_reservasi: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     id_user: Mapped[int] = mapped_column(
         ForeignKey("users.id_user", ondelete="CASCADE"),
         nullable=False,
     )
+    id_tempat: Mapped[int] = mapped_column(
+        ForeignKey("tempat.id_tempat", ondelete="CASCADE"),
+        nullable=False,
+    )
     id_jadwal: Mapped[int] = mapped_column(
         ForeignKey("jadwal.id_jadwal", ondelete="CASCADE"),
         nullable=False,
     )
+    tanggal: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     total_harga: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
@@ -31,6 +48,10 @@ class Reservasi(Base):
     jadwal: Mapped["Jadwal"] = relationship(
         "Jadwal",
         back_populates="reservasi_list",
+        lazy="selectin",
+    )
+    tempat: Mapped["Tempat"] = relationship(
+        "Tempat",
         lazy="selectin",
     )
     payments: Mapped[list["Payment"]] = relationship(

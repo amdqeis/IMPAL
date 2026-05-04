@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import time
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -9,7 +9,6 @@ class ORMModel(BaseModel):
 
 class JadwalBase(BaseModel):
     id_tempat: int | None = None
-    tanggal: date | None = None
     jam_mulai: time | None = None
     jam_selesai: time | None = None
 
@@ -22,7 +21,6 @@ class JadwalBase(BaseModel):
 
 class JadwalCreate(JadwalBase):
     id_tempat: int
-    tanggal: date
     jam_mulai: time
     jam_selesai: time
 
@@ -34,6 +32,9 @@ class JadwalUpdate(JadwalBase):
 class JadwalRead(ORMModel):
     id_jadwal: int
     id_tempat: int
-    tanggal: date
     jam_mulai: time
     jam_selesai: time
+
+
+class JadwalAvailabilityRead(JadwalRead):
+    available: bool
