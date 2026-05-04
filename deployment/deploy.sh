@@ -28,7 +28,7 @@ BACKEND_APP_MODULE="main:app"
 BACKEND_WORKERS="1"
 APP_OWNER="deploy"
 APP_GROUP="deploy"
-DB_HOST="127.0.0.1"
+DB_HOST=""
 DB_PORT="5432"
 DB_NAME="sibooking_db"
 DB_USER="sibooking_user"
@@ -339,13 +339,6 @@ validate_backend_database_env() {
 install_backend() {
     log "Install dependency backend FastAPI"
     run_as_app "cd '${BACKEND_DIR}' && python3 -m venv .venv && .venv/bin/python -m pip install --upgrade pip && .venv/bin/pip install -r requirements.txt"
-
-    if [ -f "${BACKEND_DIR}/alembic.ini" ]; then
-        log "Menjalankan migration Alembic"
-        run_as_app "cd '${BACKEND_DIR}' && .venv/bin/alembic upgrade head"
-    else
-        ok "Alembic tidak ditemukan; skip migration."
-    fi
 }
 
 install_frontend() {

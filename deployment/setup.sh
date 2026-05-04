@@ -31,7 +31,7 @@ BACKEND_APP_MODULE="main:app"
 BACKEND_WORKERS="1"
 APP_OWNER="deploy"
 APP_GROUP="deploy"
-DB_HOST="127.0.0.1"
+DB_HOST=""
 DB_PORT="5432"
 DB_NAME="sibooking_db"
 DB_USER="sibooking_user"
@@ -265,8 +265,6 @@ install_packages() {
         nginx \
         certbot \
         python3-certbot-nginx \
-        postgresql \
-        postgresql-contrib \
         python3 \
         python3-pip \
         python3-venv \
@@ -379,16 +377,9 @@ load_database_env() {
     require_non_empty FRONTEND_URL
     require_non_empty NEXT_PUBLIC_API_BASE_URL
 
-    [ "${DB_PASSWORD}" != "change-me" ] || fail "DB_PASSWORD di ${BACKEND_ENV} masih bernilai contoh. Ganti dulu sebelum setup PostgreSQL."
+    [ "${DB_PASSWORD}" != "change-me" ] || fail "DB_PASSWORD di ${BACKEND_ENV} masih bernilai contoh."
     [[ "${DATABASE_URL}" != *change-me* ]] || fail "DATABASE_URL di ${BACKEND_ENV} masih berisi password contoh. Kosongkan DATABASE_URL atau sesuaikan dengan DB_*."
     [ "${SECRET_KEY}" != "replace-with-a-long-random-string" ] || fail "SECRET_KEY di ${BACKEND_ENV} masih bernilai contoh."
-    case "${DB_HOST}" in
-        127.0.0.1|localhost)
-            ;;
-        *)
-            fail "setup.sh hanya membuat PostgreSQL lokal. Set DB_HOST=127.0.0.1 di ${BACKEND_ENV}, atau buat database eksternal secara manual."
-            ;;
-    esac
 }
 
 port_in_use() {
@@ -438,23 +429,6 @@ select_ports() {
     fi
 
     ok "Backend port: ${BACKEND_PORT}; frontend port: ${FRONTEND_PORT}"
-}
-
-configure_postgresql() {
-    log "Menyiapkan PostgreSQL database dan user"
-    systemctl enable --now postgresql
-    sudo -u postgres psql -v ON_ERROR_STOP=1 \
-        -v db_name="${DB_NAME}" \
-        -v db_user="${DB_USER}" \
-        -v db_password="${DB_PASSWORD}" <<'SQL'
-SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_password')
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user')\gexec
-
-SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'db_user')
-WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name')\gexec
-
-SELECT format('GRANT ALL PRIVILEGES ON DATABASE %I TO %I', :'db_name', :'db_user')\gexec
-SQL
 }
 
 configure_firewall() {
@@ -607,7 +581,6 @@ main() {
     require_command pip3
     require_command node
     require_command npm
-    require_command psql
     require_command nginx
     require_command certbot
     ensure_app_user
@@ -615,7 +588,6 @@ main() {
     ensure_runtime_env_files
     load_database_env
     select_ports
-    configure_postgresql
     configure_firewall
     setup_ssl
 

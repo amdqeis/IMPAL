@@ -5,7 +5,7 @@ Deployment ini menjalankan aplikasi secara host-native:
 - FastAPI berjalan sebagai service systemd di `127.0.0.1:<BACKEND_PORT>`.
 - Next.js production server berjalan sebagai service systemd di `127.0.0.1:<FRONTEND_PORT>`.
 - Nginx menjadi reverse proxy publik untuk HTTP/HTTPS.
-- PostgreSQL berjalan di host VPS.
+- Database dianggap sudah tersedia di luar VPS; script deployment tidak membuat atau mengelola database.
 - SSL dibuat dan direnew oleh Certbot/Let's Encrypt.
 
 Struktur target VPS:
@@ -59,9 +59,9 @@ sudo nano backend/.env
 sudo nano frontend/.env.production
 ```
 
-Minimal wajib diisi di `backend/.env`:
+Minimal wajib diisi di `backend/.env` sesuai database yang sudah ada:
 
-- `DB_HOST=127.0.0.1`
+- `DB_HOST`
 - `DB_PORT=5432`
 - `DB_NAME`
 - `DB_USER`
@@ -77,7 +77,7 @@ Jalankan setup server:
 sudo bash deployment/setup.sh
 ```
 
-`setup.sh` akan install dependency Ubuntu, membuat user aplikasi bila belum ada, membaca konfigurasi database dari `backend/.env`, membuat database PostgreSQL jika belum ada, memilih port internal kosong, menulis konfigurasi Nginx, mengaktifkan UFW, dan membuat SSL bila DNS domain sudah mengarah ke VPS.
+`setup.sh` akan install dependency Ubuntu untuk deploy aplikasi, membuat user aplikasi bila belum ada, memvalidasi konfigurasi database dari `backend/.env`, memilih port internal kosong, menulis konfigurasi Nginx, mengaktifkan UFW, dan membuat SSL bila DNS domain sudah mengarah ke VPS. Script ini tidak menginstal PostgreSQL lokal, tidak membuat role/user database, dan tidak membuat database baru.
 
 Saat berjalan, script akan menampilkan variabel yang berhasil dibaca dari `deployment/.env`, `backend/.env`, dan `frontend/.env.production`. Nilai sensitif seperti password, secret, token, key, dan `DATABASE_URL` akan dimasking. Jika ada variabel wajib yang tidak ada atau kosong, script akan berhenti dengan pesan yang menyebut file env, nama variabel, dan nilai saat itu.
 
@@ -93,7 +93,6 @@ sudo bash deployment/deploy.sh
 - pull update Git dari `GIT_BRANCH`;
 - membuat `backend/.env` dan `frontend/.env.production` dari file example jika belum ada, lalu berhenti jika `backend/.env` masih perlu diisi;
 - install dependency backend ke `.venv`;
-- menjalankan Alembic jika `backend/alembic.ini` tersedia;
 - install dan build frontend Next.js;
 - render service systemd backend/frontend;
 - restart service dan reload Nginx;

@@ -102,7 +102,7 @@ http://localhost:8000/docs
 ```
 ### 4. Database
 Buat File Environment
-Sebelum menjalankan database, buat dan isi file berikut:
+Database dianggap sudah tersedia. Aplikasi hanya membutuhkan konfigurasi koneksi, bukan membuat database baru. Buat dan isi file berikut:
 ```bash
 backend/.env
 ```
@@ -120,12 +120,12 @@ FRONTEND_URL=http://localhost:3000
 DATABASE_URL=your_database_url
 ```
 Inisialisasi Database
-Setelah konfigurasi .env selesai, jalankan script berikut untuk membuat table:
+Untuk development lokal saja, setelah konfigurasi .env selesai, script berikut dapat dipakai untuk membuat table pada database yang sudah ada. Jangan jalankan ini sebagai bagian dari setup deployment jika schema database sudah disiapkan:
 ```bash
 python app/db/init_db.py
 ```
 Isi Dummy Data
-Jika ingin menambahkan data dummy, jalankan:
+Untuk development lokal saja, jika ingin menambahkan data dummy, jalankan:
 ```bash
 python app/db/seed_dummy_data.py
 ```
