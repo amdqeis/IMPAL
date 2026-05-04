@@ -40,7 +40,7 @@ services:
 
 networks:
   sibooking_network:
-    name: sibooking_network
+    external: true
 
 volumes:
   sibooking_caddy_data:
