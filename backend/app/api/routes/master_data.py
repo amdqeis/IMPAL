@@ -58,6 +58,22 @@ def update_cabang(
     return service.update_cabang(db, cabang_id, payload)
 
 
+@router.delete(
+    "/cabang/{cabang_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Hapus cabang",
+    description="Menghapus cabang berdasarkan ID. Membutuhkan permission manage_branches.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def delete_cabang(
+    cabang_id: int,
+    db: DbSession,
+    _current_user=Depends(require_permissions(MANAGE_BRANCHES)),
+):
+    """Delete a branch."""
+    service.delete_cabang(db, cabang_id)
+
+
 @router.get(
     "/tempat",
     response_model=list[TempatRead],
@@ -107,3 +123,19 @@ def update_tempat(
 ):
     """Patch table data."""
     return service.update_tempat(db, tempat_id, payload)
+
+
+@router.delete(
+    "/tempat/{tempat_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Hapus tempat",
+    description="Menghapus meja/tempat berdasarkan ID. Membutuhkan permission manage_tables.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def delete_tempat(
+    tempat_id: int,
+    db: DbSession,
+    _current_user=Depends(require_permissions(MANAGE_TABLES)),
+):
+    """Delete a table."""
+    service.delete_tempat(db, tempat_id)
