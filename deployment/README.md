@@ -79,6 +79,8 @@ sudo bash deployment/setup.sh
 
 `setup.sh` akan install dependency Ubuntu, membuat user aplikasi bila belum ada, membaca konfigurasi database dari `backend/.env`, membuat database PostgreSQL jika belum ada, memilih port internal kosong, menulis konfigurasi Nginx, mengaktifkan UFW, dan membuat SSL bila DNS domain sudah mengarah ke VPS.
 
+Saat berjalan, script akan menampilkan variabel yang berhasil dibaca dari `deployment/.env`, `backend/.env`, dan `frontend/.env.production`. Nilai sensitif seperti password, secret, token, key, dan `DATABASE_URL` akan dimasking. Jika ada variabel wajib yang tidak ada atau kosong, script akan berhenti dengan pesan yang menyebut file env, nama variabel, dan nilai saat itu.
+
 ## Deploy / Update Aplikasi
 
 ```bash
@@ -96,6 +98,8 @@ sudo bash deployment/deploy.sh
 - render service systemd backend/frontend;
 - restart service dan reload Nginx;
 - menampilkan status service.
+
+Seperti `setup.sh`, `deploy.sh` juga mencetak variabel yang terbaca dari tiap file env dan memvalidasi nilai wajib sebelum install dependency, build, atau restart service.
 
 ## File Environment
 

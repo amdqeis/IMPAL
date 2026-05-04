@@ -37,6 +37,9 @@ DB_NAME="sibooking_db"
 DB_USER="sibooking_user"
 DB_PASSWORD=""
 DATABASE_URL=""
+SECRET_KEY=""
+FRONTEND_URL=""
+NEXT_PUBLIC_API_BASE_URL=""
 CLIENT_MAX_BODY_SIZE="20M"
 NODE_MAJOR="22"
 
@@ -100,6 +103,71 @@ set_from_env_file() {
     fi
 }
 
+is_secret_key() {
+    local key
+    key="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+    [[ "${key}" == *PASSWORD* || "${key}" == *SECRET* || "${key}" == *TOKEN* || "${key}" == *PRIVATE* || "${key}" == *KEY* || "${key}" == "DATABASE_URL" ]]
+}
+
+display_env_value() {
+    local key="$1"
+    local value="$2"
+    if [ -z "${value}" ]; then
+        printf '<empty>'
+    elif is_secret_key "${key}"; then
+        printf '<set, masked>'
+    else
+        printf '%s' "${value}"
+    fi
+}
+
+print_env_file_values() {
+    local file="$1"
+    local label="$2"
+    local line key value
+
+    log "Variabel dari ${label}: ${file}"
+    if [ ! -f "${file}" ]; then
+        warn "File env belum ada: ${file}"
+        return
+    fi
+
+    while IFS= read -r line || [ -n "${line}" ]; do
+        line="$(trim "${line}")"
+        [[ -z "${line}" || "${line}" == \#* ]] && continue
+        [[ "${line}" =~ ^export[[:space:]]+(.+)$ ]] && line="$(trim "${BASH_REMATCH[1]}")"
+        if [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="$(read_env_var "${file}" "${key}" || true)"
+            printf '  %s=%s\n' "${key}" "$(display_env_value "${key}" "${value}")"
+        fi
+    done < "${file}"
+}
+
+print_effective_values() {
+    local label="$1"
+    shift
+    local key value
+
+    log "Nilai efektif ${label}"
+    for key in "$@"; do
+        value="${!key:-}"
+        printf '  %s=%s\n' "${key}" "$(display_env_value "${key}" "${value}")"
+    done
+}
+
+require_env_file_value() {
+    local file="$1"
+    local label="$2"
+    local key="$3"
+    local value
+
+    if ! value="$(read_env_var "${file}" "${key}")"; then
+        fail "Variabel ${key} tidak ditemukan di ${label} env: ${file}"
+    fi
+    [ -n "${value}" ] || fail "Variabel ${key} di ${label} env kosong. File: ${file}; nilai saat ini: $(display_env_value "${key}" "${value}")"
+}
+
 quote_env_value() {
     local value="$1"
     if [[ "${value}" =~ [[:space:]#\"\'\\$] ]]; then
@@ -151,11 +219,19 @@ derive_paths() {
 require_non_empty() {
     local name="$1"
     local value="${!name:-}"
-    [ -n "${value}" ] || fail "${name} wajib diisi."
+    [ -n "${value}" ] || fail "${name} wajib diisi. Nilai saat ini: $(display_env_value "${name}" "${value}")"
 }
 
 validate_config() {
     derive_paths
+    print_effective_values "deployment" \
+        APP_NAME DOMAIN SSL_EMAIL GIT_BRANCH PROJECT_ROOT PROJECT_DIR FRONTEND_DIR BACKEND_DIR DEPLOYMENT_DIR BACKEND_ENV FRONTEND_ENV BACKEND_PORT FRONTEND_PORT BACKEND_PORT_START FRONTEND_PORT_START BACKEND_APP_MODULE BACKEND_WORKERS APP_OWNER APP_GROUP CLIENT_MAX_BODY_SIZE NODE_MAJOR
+
+    local key
+    for key in APP_NAME DOMAIN SSL_EMAIL GIT_BRANCH PROJECT_ROOT PROJECT_DIR FRONTEND_DIR BACKEND_DIR DEPLOYMENT_DIR BACKEND_ENV FRONTEND_ENV BACKEND_PORT_START FRONTEND_PORT_START BACKEND_APP_MODULE BACKEND_WORKERS APP_OWNER APP_GROUP CLIENT_MAX_BODY_SIZE NODE_MAJOR; do
+        require_env_file_value "${ENV_FILE}" "deployment" "${key}"
+    done
+
     require_non_empty APP_NAME
     require_non_empty DOMAIN
     require_non_empty SSL_EMAIL
@@ -257,6 +333,9 @@ ensure_runtime_env_files() {
 
     chmod 0600 "${BACKEND_ENV}" "${FRONTEND_ENV}"
     chown "${APP_OWNER}:${APP_GROUP}" "${BACKEND_ENV}" "${FRONTEND_ENV}"
+
+    print_env_file_values "${BACKEND_ENV}" "backend"
+    print_env_file_values "${FRONTEND_ENV}" "frontend"
 }
 
 set_from_backend_env() {
@@ -268,22 +347,41 @@ set_from_backend_env() {
 }
 
 load_database_env() {
-    log "Membaca konfigurasi database dari ${BACKEND_ENV}"
+    local value
+    log "Membaca konfigurasi backend dari ${BACKEND_ENV}"
     set_from_backend_env DB_HOST
     set_from_backend_env DB_PORT
     set_from_backend_env DB_NAME
     set_from_backend_env DB_USER
     set_from_backend_env DB_PASSWORD
     set_from_backend_env DATABASE_URL
+    set_from_backend_env SECRET_KEY
+    set_from_backend_env FRONTEND_URL
+    if value="$(read_env_var "${FRONTEND_ENV}" "NEXT_PUBLIC_API_BASE_URL")"; then
+        NEXT_PUBLIC_API_BASE_URL="${value}"
+    fi
+
+    print_effective_values "backend" DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD DATABASE_URL SECRET_KEY FRONTEND_URL
+    print_effective_values "frontend" NEXT_PUBLIC_API_BASE_URL
+
+    local key
+    for key in DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD SECRET_KEY FRONTEND_URL; do
+        require_env_file_value "${BACKEND_ENV}" "backend" "${key}"
+    done
+    require_env_file_value "${FRONTEND_ENV}" "frontend" NEXT_PUBLIC_API_BASE_URL
 
     require_non_empty DB_HOST
     require_non_empty DB_PORT
     require_non_empty DB_NAME
     require_non_empty DB_USER
     require_non_empty DB_PASSWORD
+    require_non_empty SECRET_KEY
+    require_non_empty FRONTEND_URL
+    require_non_empty NEXT_PUBLIC_API_BASE_URL
 
     [ "${DB_PASSWORD}" != "change-me" ] || fail "DB_PASSWORD di ${BACKEND_ENV} masih bernilai contoh. Ganti dulu sebelum setup PostgreSQL."
     [[ "${DATABASE_URL}" != *change-me* ]] || fail "DATABASE_URL di ${BACKEND_ENV} masih berisi password contoh. Kosongkan DATABASE_URL atau sesuaikan dengan DB_*."
+    [ "${SECRET_KEY}" != "replace-with-a-long-random-string" ] || fail "SECRET_KEY di ${BACKEND_ENV} masih bernilai contoh."
     case "${DB_HOST}" in
         127.0.0.1|localhost)
             ;;
@@ -501,6 +599,7 @@ setup_ssl() {
 main() {
     require_root
     load_env
+    print_env_file_values "${ENV_FILE}" "deployment"
     validate_config
     install_packages
     install_nodejs
