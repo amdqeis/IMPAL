@@ -28,11 +28,12 @@ BACKEND_APP_MODULE="main:app"
 BACKEND_WORKERS="1"
 APP_OWNER="deploy"
 APP_GROUP="deploy"
-DATABASE_HOST="127.0.0.1"
-DATABASE_PORT="5432"
-DATABASE_NAME="sibooking_db"
-DATABASE_USER="sibooking_user"
-DATABASE_PASSWORD=""
+DB_HOST="127.0.0.1"
+DB_PORT="5432"
+DB_NAME="sibooking_db"
+DB_USER="sibooking_user"
+DB_PASSWORD=""
+DATABASE_URL=""
 CLIENT_MAX_BODY_SIZE="20M"
 
 log() {
@@ -123,7 +124,7 @@ set_env_value() {
 load_env() {
     [ -f "${ENV_FILE}" ] || fail "Deployment env tidak ditemukan: ${ENV_FILE}. Jalankan setup.sh terlebih dahulu."
     local key
-    for key in APP_NAME DOMAIN SSL_EMAIL GIT_BRANCH PROJECT_ROOT PROJECT_DIR FRONTEND_DIR BACKEND_DIR DEPLOYMENT_DIR BACKEND_ENV FRONTEND_ENV BACKEND_PORT FRONTEND_PORT BACKEND_APP_MODULE BACKEND_WORKERS APP_OWNER APP_GROUP DATABASE_HOST DATABASE_PORT DATABASE_NAME DATABASE_USER DATABASE_PASSWORD CLIENT_MAX_BODY_SIZE; do
+    for key in APP_NAME DOMAIN SSL_EMAIL GIT_BRANCH PROJECT_ROOT PROJECT_DIR FRONTEND_DIR BACKEND_DIR DEPLOYMENT_DIR BACKEND_ENV FRONTEND_ENV BACKEND_PORT FRONTEND_PORT BACKEND_APP_MODULE BACKEND_WORKERS APP_OWNER APP_GROUP CLIENT_MAX_BODY_SIZE; do
         set_from_env_file "${key}"
     done
 }
@@ -141,7 +142,7 @@ derive_paths() {
 require_non_empty() {
     local name="$1"
     local value="${!name:-}"
-    [ -n "${value}" ] || fail "${name} wajib diisi di ${ENV_FILE}."
+    [ -n "${value}" ] || fail "${name} wajib diisi."
 }
 
 require_command() {
@@ -163,9 +164,6 @@ validate_config() {
     require_non_empty BACKEND_APP_MODULE
     require_non_empty APP_OWNER
     require_non_empty APP_GROUP
-    require_non_empty DATABASE_NAME
-    require_non_empty DATABASE_USER
-    require_non_empty DATABASE_PASSWORD
 
     [ -d "${PROJECT_DIR}" ] || fail "PROJECT_DIR tidak ditemukan: ${PROJECT_DIR}"
     [ -d "${BACKEND_DIR}" ] || fail "Folder backend tidak ditemukan: ${BACKEND_DIR}"
@@ -195,17 +193,8 @@ prepare_env_files() {
     if [ ! -f "${BACKEND_ENV}" ]; then
         [ -f "${BACKEND_DIR}/.env.example" ] || fail "Backend env example tidak ditemukan: ${BACKEND_DIR}/.env.example"
         install -m 0600 -o "${APP_OWNER}" -g "${APP_GROUP}" "${BACKEND_DIR}/.env.example" "${BACKEND_ENV}"
-        set_env_value "${BACKEND_ENV}" APP_ENV "production"
-        set_env_value "${BACKEND_ENV}" APP_DEBUG "false"
-        set_env_value "${BACKEND_ENV}" DB_HOST "${DATABASE_HOST}"
-        set_env_value "${BACKEND_ENV}" DB_PORT "${DATABASE_PORT}"
-        set_env_value "${BACKEND_ENV}" DB_NAME "${DATABASE_NAME}"
-        set_env_value "${BACKEND_ENV}" DB_USER "${DATABASE_USER}"
-        set_env_value "${BACKEND_ENV}" DB_PASSWORD "${DATABASE_PASSWORD}"
-        set_env_value "${BACKEND_ENV}" DATABASE_URL "postgresql+psycopg2://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}"
-        set_env_value "${BACKEND_ENV}" FRONTEND_URL "https://${DOMAIN}"
         chown "${APP_OWNER}:${APP_GROUP}" "${BACKEND_ENV}"
-        ok "Backend env dibuat: ${BACKEND_ENV}"
+        fail "Backend env dibuat: ${BACKEND_ENV}. Isi DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, SECRET_KEY, dan FRONTEND_URL lalu jalankan deploy.sh lagi."
     else
         chmod 0600 "${BACKEND_ENV}"
         chown "${APP_OWNER}:${APP_GROUP}" "${BACKEND_ENV}"
@@ -221,6 +210,32 @@ prepare_env_files() {
         chown "${APP_OWNER}:${APP_GROUP}" "${FRONTEND_ENV}"
         ok "Frontend env sudah ada; tidak dioverwrite."
     fi
+}
+
+set_from_backend_env() {
+    local key="$1"
+    local value
+    if value="$(read_env_var "${BACKEND_ENV}" "${key}")"; then
+        printf -v "${key}" '%s' "${value}"
+    fi
+}
+
+validate_backend_database_env() {
+    log "Memvalidasi konfigurasi database dari ${BACKEND_ENV}"
+    set_from_backend_env DB_HOST
+    set_from_backend_env DB_PORT
+    set_from_backend_env DB_NAME
+    set_from_backend_env DB_USER
+    set_from_backend_env DB_PASSWORD
+    set_from_backend_env DATABASE_URL
+
+    require_non_empty DB_HOST
+    require_non_empty DB_PORT
+    require_non_empty DB_NAME
+    require_non_empty DB_USER
+    require_non_empty DB_PASSWORD
+    [ "${DB_PASSWORD}" != "change-me" ] || fail "DB_PASSWORD di ${BACKEND_ENV} masih bernilai contoh."
+    [[ "${DATABASE_URL}" != *change-me* ]] || fail "DATABASE_URL di ${BACKEND_ENV} masih berisi password contoh. Kosongkan DATABASE_URL atau sesuaikan dengan DB_*."
 }
 
 install_backend() {
@@ -404,6 +419,7 @@ main() {
     validate_config
     chown -R "${APP_OWNER}:${APP_GROUP}" "${PROJECT_DIR}"
     prepare_env_files
+    validate_backend_database_env
     install_backend
     install_frontend
     render_systemd_services

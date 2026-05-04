@@ -31,11 +31,12 @@ BACKEND_APP_MODULE="main:app"
 BACKEND_WORKERS="1"
 APP_OWNER="deploy"
 APP_GROUP="deploy"
-DATABASE_HOST="127.0.0.1"
-DATABASE_PORT="5432"
-DATABASE_NAME="sibooking_db"
-DATABASE_USER="sibooking_user"
-DATABASE_PASSWORD=""
+DB_HOST="127.0.0.1"
+DB_PORT="5432"
+DB_NAME="sibooking_db"
+DB_USER="sibooking_user"
+DB_PASSWORD=""
+DATABASE_URL=""
 CLIENT_MAX_BODY_SIZE="20M"
 NODE_MAJOR="22"
 
@@ -128,11 +129,11 @@ load_env() {
     if [ ! -f "${ENV_FILE}" ]; then
         [ -f "${ENV_EXAMPLE}" ] || fail "File contoh env tidak ditemukan: ${ENV_EXAMPLE}"
         install -m 0600 "${ENV_EXAMPLE}" "${ENV_FILE}"
-        fail "File ${ENV_FILE} sudah dibuat dari env.example. Isi DOMAIN, SSL_EMAIL, dan DATABASE_PASSWORD lalu jalankan setup.sh lagi."
+        fail "File ${ENV_FILE} sudah dibuat dari env.example. Isi DOMAIN dan SSL_EMAIL lalu jalankan setup.sh lagi."
     fi
 
     local key
-    for key in APP_NAME DOMAIN SSL_EMAIL GIT_BRANCH PROJECT_ROOT PROJECT_DIR FRONTEND_DIR BACKEND_DIR DEPLOYMENT_DIR BACKEND_ENV FRONTEND_ENV BACKEND_PORT FRONTEND_PORT BACKEND_PORT_START FRONTEND_PORT_START BACKEND_APP_MODULE BACKEND_WORKERS APP_OWNER APP_GROUP DATABASE_HOST DATABASE_PORT DATABASE_NAME DATABASE_USER DATABASE_PASSWORD CLIENT_MAX_BODY_SIZE NODE_MAJOR; do
+    for key in APP_NAME DOMAIN SSL_EMAIL GIT_BRANCH PROJECT_ROOT PROJECT_DIR FRONTEND_DIR BACKEND_DIR DEPLOYMENT_DIR BACKEND_ENV FRONTEND_ENV BACKEND_PORT FRONTEND_PORT BACKEND_PORT_START FRONTEND_PORT_START BACKEND_APP_MODULE BACKEND_WORKERS APP_OWNER APP_GROUP CLIENT_MAX_BODY_SIZE NODE_MAJOR; do
         set_from_env_file "${key}"
     done
 }
@@ -150,7 +151,7 @@ derive_paths() {
 require_non_empty() {
     local name="$1"
     local value="${!name:-}"
-    [ -n "${value}" ] || fail "${name} wajib diisi di ${ENV_FILE}."
+    [ -n "${value}" ] || fail "${name} wajib diisi."
 }
 
 validate_config() {
@@ -160,9 +161,6 @@ validate_config() {
     require_non_empty SSL_EMAIL
     require_non_empty PROJECT_ROOT
     require_non_empty PROJECT_DIR
-    require_non_empty DATABASE_NAME
-    require_non_empty DATABASE_USER
-    require_non_empty DATABASE_PASSWORD
     require_non_empty APP_OWNER
     require_non_empty APP_GROUP
 
@@ -240,6 +238,61 @@ create_directories() {
     chmod 0600 "${ENV_FILE}"
 }
 
+ensure_runtime_env_files() {
+    log "Menyiapkan file environment per folder"
+    [ -d "${BACKEND_DIR}" ] || fail "Folder backend tidak ditemukan: ${BACKEND_DIR}"
+    [ -d "${FRONTEND_DIR}" ] || fail "Folder frontend tidak ditemukan: ${FRONTEND_DIR}"
+
+    if [ ! -f "${BACKEND_ENV}" ]; then
+        [ -f "${BACKEND_DIR}/.env.example" ] || fail "Backend env example tidak ditemukan: ${BACKEND_DIR}/.env.example"
+        install -m 0600 -o "${APP_OWNER}" -g "${APP_GROUP}" "${BACKEND_DIR}/.env.example" "${BACKEND_ENV}"
+        fail "File ${BACKEND_ENV} sudah dibuat. Isi DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, SECRET_KEY, dan FRONTEND_URL lalu jalankan setup.sh lagi."
+    fi
+
+    if [ ! -f "${FRONTEND_ENV}" ]; then
+        [ -f "${FRONTEND_DIR}/.env.production.example" ] || fail "Frontend env example tidak ditemukan: ${FRONTEND_DIR}/.env.production.example"
+        install -m 0600 -o "${APP_OWNER}" -g "${APP_GROUP}" "${FRONTEND_DIR}/.env.production.example" "${FRONTEND_ENV}"
+        ok "Frontend env dibuat: ${FRONTEND_ENV}"
+    fi
+
+    chmod 0600 "${BACKEND_ENV}" "${FRONTEND_ENV}"
+    chown "${APP_OWNER}:${APP_GROUP}" "${BACKEND_ENV}" "${FRONTEND_ENV}"
+}
+
+set_from_backend_env() {
+    local key="$1"
+    local value
+    if value="$(read_env_var "${BACKEND_ENV}" "${key}")"; then
+        printf -v "${key}" '%s' "${value}"
+    fi
+}
+
+load_database_env() {
+    log "Membaca konfigurasi database dari ${BACKEND_ENV}"
+    set_from_backend_env DB_HOST
+    set_from_backend_env DB_PORT
+    set_from_backend_env DB_NAME
+    set_from_backend_env DB_USER
+    set_from_backend_env DB_PASSWORD
+    set_from_backend_env DATABASE_URL
+
+    require_non_empty DB_HOST
+    require_non_empty DB_PORT
+    require_non_empty DB_NAME
+    require_non_empty DB_USER
+    require_non_empty DB_PASSWORD
+
+    [ "${DB_PASSWORD}" != "change-me" ] || fail "DB_PASSWORD di ${BACKEND_ENV} masih bernilai contoh. Ganti dulu sebelum setup PostgreSQL."
+    [[ "${DATABASE_URL}" != *change-me* ]] || fail "DATABASE_URL di ${BACKEND_ENV} masih berisi password contoh. Kosongkan DATABASE_URL atau sesuaikan dengan DB_*."
+    case "${DB_HOST}" in
+        127.0.0.1|localhost)
+            ;;
+        *)
+            fail "setup.sh hanya membuat PostgreSQL lokal. Set DB_HOST=127.0.0.1 di ${BACKEND_ENV}, atau buat database eksternal secara manual."
+            ;;
+    esac
+}
+
 port_in_use() {
     local port="$1"
     python3 - "${port}" <<'PY'
@@ -293,9 +346,9 @@ configure_postgresql() {
     log "Menyiapkan PostgreSQL database dan user"
     systemctl enable --now postgresql
     sudo -u postgres psql -v ON_ERROR_STOP=1 \
-        -v db_name="${DATABASE_NAME}" \
-        -v db_user="${DATABASE_USER}" \
-        -v db_password="${DATABASE_PASSWORD}" <<'SQL'
+        -v db_name="${DB_NAME}" \
+        -v db_user="${DB_USER}" \
+        -v db_password="${DB_PASSWORD}" <<'SQL'
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user')\gexec
 
@@ -460,6 +513,8 @@ main() {
     require_command certbot
     ensure_app_user
     create_directories
+    ensure_runtime_env_files
+    load_database_env
     select_ports
     configure_postgresql
     configure_firewall

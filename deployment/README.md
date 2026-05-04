@@ -47,8 +47,29 @@ Minimal wajib diisi:
 
 - `DOMAIN`
 - `SSL_EMAIL`
-- `DATABASE_PASSWORD`
 - sesuaikan `APP_OWNER` jika user deploy berbeda
+
+Siapkan juga env backend dan frontend. Secret database ada di `backend/.env`, bukan `deployment/.env`:
+
+```bash
+sudo cp backend/.env.example backend/.env
+sudo cp frontend/.env.production.example frontend/.env.production
+sudo chmod 600 backend/.env frontend/.env.production
+sudo nano backend/.env
+sudo nano frontend/.env.production
+```
+
+Minimal wajib diisi di `backend/.env`:
+
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=5432`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+- `SECRET_KEY`
+- `FRONTEND_URL=https://<DOMAIN>`
+
+Biarkan `DATABASE_URL` kosong kecuali memang ingin override manual. Jika `DATABASE_URL` diisi, backend akan memakai nilai itu dan mengabaikan komponen `DB_*`.
 
 Jalankan setup server:
 
@@ -56,7 +77,7 @@ Jalankan setup server:
 sudo bash deployment/setup.sh
 ```
 
-`setup.sh` akan install dependency Ubuntu, membuat user aplikasi bila belum ada, membuat database PostgreSQL jika belum ada, memilih port internal kosong, menulis konfigurasi Nginx, mengaktifkan UFW, dan membuat SSL bila DNS domain sudah mengarah ke VPS.
+`setup.sh` akan install dependency Ubuntu, membuat user aplikasi bila belum ada, membaca konfigurasi database dari `backend/.env`, membuat database PostgreSQL jika belum ada, memilih port internal kosong, menulis konfigurasi Nginx, mengaktifkan UFW, dan membuat SSL bila DNS domain sudah mengarah ke VPS.
 
 ## Deploy / Update Aplikasi
 
@@ -68,7 +89,7 @@ sudo bash deployment/deploy.sh
 `deploy.sh` akan:
 
 - pull update Git dari `GIT_BRANCH`;
-- membuat `backend/.env` dan `frontend/.env.production` dari file example jika belum ada;
+- membuat `backend/.env` dan `frontend/.env.production` dari file example jika belum ada, lalu berhenti jika `backend/.env` masih perlu diisi;
 - install dependency backend ke `.venv`;
 - menjalankan Alembic jika `backend/alembic.ini` tersedia;
 - install dan build frontend Next.js;
@@ -89,6 +110,8 @@ Backend secret:
 ```text
 backend/.env
 ```
+
+Berisi konfigurasi backend dan database seperti `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `SECRET_KEY`, mail config, dan `FRONTEND_URL`.
 
 Frontend public runtime config:
 
