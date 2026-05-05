@@ -247,6 +247,14 @@ export const api = {
     getUserAccess: (userId: number) =>
       request<AuthResponse>(`/auth/users/${userId}/access`),
     listPermissions: () => request<string[]>("/auth/permissions"),
+    logout: () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      window.localStorage.removeItem("sibooking_token");
+      window.sessionStorage.removeItem("sibooking_token");
+    },
   },
   masterData: {
     listCabang: () => request<Cabang[]>("/master-data/cabang"),
