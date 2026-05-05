@@ -12,6 +12,7 @@ class BackendSmokeTest(unittest.TestCase):
         schema = app.openapi()
 
         self.assertIn("/api/auth/login", schema["paths"])
+        self.assertIn("/api/auth/logout", schema["paths"])
         self.assertIn("/api/master-data/cabang/{cabang_id}", schema["paths"])
         self.assertIn("delete", schema["paths"]["/api/master-data/cabang/{cabang_id}"])
         self.assertIn("/api/jadwal/{jadwal_id}", schema["paths"])

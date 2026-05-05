@@ -84,6 +84,41 @@ class AuthRbacTest(unittest.TestCase):
         self.assertEqual(logged_in.token, logged_in.access_token)
         self.assertIn("create_reservations", logged_in.permissions)
 
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=registered.access_token)
+        current_user = get_current_user(credentials, self.db)
+        self.assertEqual(current_user.email, "baru@example.com")
+
+    def test_logout_is_stateless_and_client_discards_jwt(self) -> None:
+        user = self._create_user("logout@example.com")
+        token, _ = create_access_token(
+            subject=str(user.id_user),
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.jwt_algorithm,
+            expires_delta=timedelta(minutes=5),
+        )
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+        self.assertEqual(get_current_user(credentials, self.db).id_user, user.id_user)
+
+        response = auth_service.logout_user()
+        self.assertEqual(response.message, "Logout berhasil")
+        self.assertEqual(get_current_user(credentials, self.db).id_user, user.id_user)
+
+    def test_expired_token_returns_401(self) -> None:
+        expired_token, _ = create_access_token(
+            subject="1",
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.jwt_algorithm,
+            expires_delta=timedelta(seconds=-1),
+        )
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=expired_token)
+
+        with self.assertRaises(HTTPException) as expired:
+            get_current_user(credentials, self.db)
+
+        self.assertEqual(expired.exception.status_code, 401)
+        self.assertEqual(expired.exception.detail, "Token sudah expired")
+
     def test_missing_and_expired_token_return_401(self) -> None:
         with self.assertRaises(HTTPException) as missing:
             get_current_user(None, self.db)

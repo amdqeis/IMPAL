@@ -127,6 +127,32 @@ class ReservasiServiceTest(unittest.TestCase):
 
         self.assertEqual(reservasi.status, "pending")
 
+    def test_create_reservasi_allows_slot_reuse_after_cancellation(self) -> None:
+        first_user = self._create_user()
+        second_user = self._create_user("second@example.com")
+        jadwal = self._create_jadwal(self._create_tempat())
+        tanggal = date.today() + timedelta(days=1)
+
+        cancelled_reservasi = reservasi_service.create_reservasi(
+            self.db,
+            self._payload(first_user, jadwal, tanggal=tanggal),
+            current_user=first_user,
+        )
+        reservasi_service.update_status_reservasi(
+            self.db,
+            cancelled_reservasi.id_reservasi,
+            ReservasiUpdateStatus(status="cancelled"),
+        )
+
+        new_reservasi = reservasi_service.create_reservasi(
+            self.db,
+            self._payload(second_user, jadwal, tanggal=tanggal),
+            current_user=second_user,
+        )
+
+        self.assertNotEqual(new_reservasi.id_reservasi, cancelled_reservasi.id_reservasi)
+        self.assertEqual(new_reservasi.status, "pending")
+
     def test_create_reservasi_rejects_mismatched_tempat_and_jadwal(self) -> None:
         user = self._create_user()
         jadwal = self._create_jadwal(self._create_tempat(nomor_meja="A01"))
