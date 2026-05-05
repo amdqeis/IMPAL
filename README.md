@@ -6,11 +6,13 @@ Markdown
 ---
 ## 🌐 Akses Website
 
-Website SiBooking dapat diakses melalui:
+Aplikasi SiBooking sudah dapat diakses secara online melalui alamat berikut:
 
-```bash
+**Website:**  
 https://sibooking.keispace.cloud
-```
+
+**API Documentation / Swagger:**  
+https://sibooking.keispace.cloud/docs
 
 ## 📊 Perancangan Sistem (DFD)
 
@@ -52,7 +54,7 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 - **Deployment:** Virtual Private Server (VPS)
 - **Access Token:** JWT - Bearer Token
 - **Middleware:** Docker
-- **DV Certificate:** Caddyp
+- **DV Certificate:** Caddy
 - **CI/CD:** Github Actions - Docker Compose
 ---
 
