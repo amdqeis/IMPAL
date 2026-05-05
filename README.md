@@ -43,8 +43,9 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 - **Backend:** Fast API 
 - **Database:** PostgreSQL
 - **Deployment:** Virtual Private Server (VPS)
-- **Access Token:** JWT
+- **Access Token:** JWT - Bearer Token
 - **Middleware:** Docker
+- **DV Certificate:** Caddyp
 - **CI/CD:** Github Actions - Docker Compose
 ---
 
