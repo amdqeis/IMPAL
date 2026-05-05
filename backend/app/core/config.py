@@ -41,7 +41,7 @@ class Config:
 
         self.SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
         self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-        self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+        self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
         self.SESSION_COOKIE_HTTPONLY = True
         self.SESSION_COOKIE_SECURE = _to_bool(
             os.getenv("SESSION_COOKIE_SECURE"),
