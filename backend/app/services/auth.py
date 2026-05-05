@@ -5,10 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import create_access_token, needs_password_rehash
+from app.core.security import create_access_token
 from app.models import User, UserRole
 from app.repositories import users as user_repo
-from app.schemas.auth import AuthResponse, LoginRequest, UserCreate, UserRead
+from app.schemas.auth import AuthResponse, LoginRequest, LogoutResponse, UserCreate, UserRead
 
 
 def _role_names(user: User) -> list[str]:
@@ -95,6 +95,12 @@ def login_user(db: Session, payload: LoginRequest) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email atau password tidak valid")
 
     return build_auth_response(user, message="Login berhasil", include_token=True)
+
+
+def logout_user() -> LogoutResponse:
+    """Acknowledge logout; the client removes its stored JWT."""
+    return LogoutResponse(message="Logout berhasil")
+
 
 def get_user_access(db: Session, user_id: int) -> AuthResponse:
     """Return roles and permissions for a user."""

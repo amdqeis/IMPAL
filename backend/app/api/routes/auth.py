@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession, has_permission, require_permissions
 from app.repositories import users as user_repo
-from app.schemas import AuthResponse, COMMON_ERROR_RESPONSES, LoginRequest, UserCreate
+from app.schemas import AuthResponse, COMMON_ERROR_RESPONSES, LoginRequest, LogoutResponse, UserCreate
 from app.services import auth as auth_service
 from app.services.permissions import MANAGE_ROLES, MANAGE_USERS
 
@@ -33,6 +33,18 @@ def register(payload: UserCreate, db: DbSession) -> AuthResponse:
 def login(payload: LoginRequest, db: DbSession) -> AuthResponse:
     """Authenticate a user and issue a JWT access token."""
     return auth_service.login_user(db, payload)
+
+
+@router.post(
+    "/logout",
+    response_model=LogoutResponse,
+    summary="Logout user",
+    description="Logout stateless. Client menghapus JWT dari localStorage/sessionStorage.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def logout(_current_user: CurrentUser) -> LogoutResponse:
+    """Acknowledge logout; the client discards the stored JWT."""
+    return auth_service.logout_user()
 
 
 @router.get(

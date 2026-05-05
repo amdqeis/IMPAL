@@ -1,4 +1,4 @@
-from .auth import AuthResponse, LoginRequest, PermissionRead, RoleRead, UserCreate, UserRead
+from .auth import AuthResponse, LoginRequest, LogoutResponse, PermissionRead, RoleRead, UserCreate, UserRead
 from .common import COMMON_ERROR_RESPONSES, ErrorResponse
 from .jadwal import JadwalAvailabilityRead, JadwalCreate, JadwalRead, JadwalUpdate
 from .laporan import LaporanCreate, LaporanRead, LaporanUpdate
@@ -30,6 +30,7 @@ __all__ = [
     "LaporanRead",
     "LaporanUpdate",
     "LoginRequest",
+    "LogoutResponse",
     "PaymentCreate",
     "PaymentLogCreate",
     "PaymentLogRead",

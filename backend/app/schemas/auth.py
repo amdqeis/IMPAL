@@ -37,6 +37,10 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=1)
 
 
+class LogoutResponse(BaseModel):
+    message: str
+
+
 class UserRead(ORMModel):
     id_user: int
     nama: str
