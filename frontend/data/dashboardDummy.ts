@@ -2,6 +2,7 @@ export type SidebarMenuItem = {
   label: string;
   icon: "dashboard" | "booking" | "history";
   active?: boolean;
+  href?: string;
 };
 
 export type FacilityItem = {
@@ -26,9 +27,9 @@ export type RoomCardItem = {
 };
 
 export const sidebarMenu: SidebarMenuItem[] = [
-  { label: "Dashboard", icon: "dashboard", active: true },
-  { label: "Booking", icon: "booking" },
-  { label: "History", icon: "history" },
+  { label: "Dashboard", icon: "dashboard", active: true, href: "/user/dashboard" },
+  { label: "Booking", icon: "booking", href: "/user/booking" },
+  { label: "History", icon: "history", href: "#" },
 ];
 
 export const featuredRooms: FeaturedRoom[] = [
