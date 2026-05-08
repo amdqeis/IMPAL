@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import {
   Fan,
   ShieldCheck,
@@ -69,9 +70,12 @@ export function FeaturedRoomCard({ room }: FeaturedRoomCardProps) {
         <p className="min-w-0 text-[20px] font-extrabold leading-tight text-[#065948]">
           {room.price}
         </p>
-        <button className="flex h-[42px] shrink-0 items-center justify-center rounded-xl bg-[#0F7B61] px-6 text-[14px] font-extrabold leading-none text-white shadow-md transition hover:bg-[#0B5E4A]">
+        <Link
+          href="/user/payment"
+          className="flex h-[42px] shrink-0 items-center justify-center rounded-xl bg-[#0F7B61] px-6 text-[14px] font-extrabold leading-none text-white shadow-md transition hover:bg-[#0B5E4A]"
+        >
           BOOK NOW
-        </button>
+        </Link>
       </div>
     </article>
   );
