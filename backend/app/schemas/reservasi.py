@@ -3,6 +3,10 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.auth import UserRead
+from app.schemas.jadwal import JadwalRead
+from app.schemas.master_data import TempatRead
+
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -29,3 +33,6 @@ class ReservasiRead(ORMModel):
     tanggal: date
     status: str
     total_harga: Decimal
+    user: UserRead | None = None
+    tempat: TempatRead | None = None
+    jadwal: JadwalRead | None = None

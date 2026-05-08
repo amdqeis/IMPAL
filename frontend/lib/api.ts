@@ -14,6 +14,8 @@ export class ApiError extends Error {
   }
 }
 
+export type RoleName = "admin" | "user" | string;
+
 export type User = {
   id_user: number;
   nama: string;
@@ -21,11 +23,21 @@ export type User = {
   no_hp: string;
 };
 
+export type UserWithAccess = User & {
+  roles: RoleName[];
+  permissions: string[];
+  status?: "Active" | "Inactive";
+};
+
 export type AuthResponse = {
   user: User;
-  roles: string[];
+  roles: RoleName[];
   permissions: string[];
   token: string | null;
+  access_token?: string | null;
+  token_type?: string;
+  expires_at?: string | null;
+  expires_in?: number | null;
   message: string;
 };
 
@@ -40,6 +52,8 @@ export type LoginPayload = {
   email: string;
   password: string;
 };
+
+export type UserUpdatePayload = Partial<Pick<User, "nama" | "email" | "no_hp">>;
 
 export type Cabang = {
   id_cabang: number;
@@ -60,6 +74,7 @@ export type Tempat = {
   nomor_meja: string;
   harga: string;
   status: string;
+  cabang?: Cabang | null;
 };
 
 export type TempatCreatePayload = {
@@ -74,14 +89,14 @@ export type TempatUpdatePayload = Partial<TempatCreatePayload>;
 export type Jadwal = {
   id_jadwal: number;
   id_tempat: number;
-  tanggal: string;
   jam_mulai: string;
   jam_selesai: string;
+  available?: boolean;
+  tempat?: Tempat | null;
 };
 
 export type JadwalCreatePayload = {
   id_tempat: number;
-  tanggal: string;
   jam_mulai: string;
   jam_selesai: string;
 };
@@ -91,14 +106,22 @@ export type JadwalUpdatePayload = Partial<JadwalCreatePayload>;
 export type Reservasi = {
   id_reservasi: number;
   id_user: number;
+  id_tempat: number;
   id_jadwal: number;
+  tanggal: string;
   status: string;
   total_harga: string;
+  user?: User | null;
+  tempat?: Tempat | null;
+  jadwal?: Jadwal | null;
+  payments?: Pembayaran[];
 };
 
 export type ReservasiCreatePayload = {
   id_user: number;
+  id_tempat: number;
   id_jadwal: number;
+  tanggal: string;
   status?: string;
   total_harga: number | string;
 };
@@ -112,6 +135,7 @@ export type Pembayaran = {
   id_reservasi: number;
   amount: string;
   status: string;
+  reservasi?: Reservasi | null;
 };
 
 export type PembayaranCreatePayload = {
@@ -165,14 +189,79 @@ export type LaporanCreatePayload = {
 
 export type LaporanUpdatePayload = Partial<LaporanCreatePayload>;
 
+export type AdminSummary = {
+  total_bookings: number;
+  active_bookings: number;
+  paid_payments: number;
+  pending_payments: number;
+  income_total: string;
+};
+
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   query?: QueryParams;
+  auth?: boolean;
 };
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
   "http://localhost:8000/api";
+
+const TOKEN_KEY = "sibooking_token";
+const USER_KEY = "sibooking_user";
+
+export function getStoredToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(TOKEN_KEY) ?? window.sessionStorage.getItem(TOKEN_KEY);
+}
+
+export function getStoredAuth(): AuthResponse | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(USER_KEY) ?? window.sessionStorage.getItem(USER_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as AuthResponse;
+  } catch {
+    return null;
+  }
+}
+
+export function persistAuth(auth: AuthResponse, remember: boolean) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const token = auth.access_token ?? auth.token;
+  const target = remember ? window.localStorage : window.sessionStorage;
+  const other = remember ? window.sessionStorage : window.localStorage;
+  other.removeItem(TOKEN_KEY);
+  other.removeItem(USER_KEY);
+
+  if (token) {
+    target.setItem(TOKEN_KEY, token);
+  }
+  target.setItem(USER_KEY, JSON.stringify(auth));
+}
+
+export function clearAuth() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(USER_KEY);
+  window.sessionStorage.removeItem(TOKEN_KEY);
+  window.sessionStorage.removeItem(USER_KEY);
+}
 
 function toQueryString(query?: QueryParams) {
   if (!query) {
@@ -186,10 +275,7 @@ function toQueryString(query?: QueryParams) {
       continue;
     }
 
-    searchParams.set(
-      key,
-      value instanceof Date ? value.toISOString() : String(value),
-    );
+    searchParams.set(key, value instanceof Date ? value.toISOString() : String(value));
   }
 
   const serialized = searchParams.toString();
@@ -202,12 +288,14 @@ function buildUrl(path: string, query?: QueryParams) {
 
 async function request<T>(
   path: string,
-  { body, headers, query, ...init }: RequestOptions = {},
+  { body, headers, query, auth = true, ...init }: RequestOptions = {},
 ): Promise<T> {
+  const token = auth ? getStoredToken() : null;
   const response = await fetch(buildUrl(path, query), {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -216,7 +304,7 @@ async function request<T>(
 
   const contentType = response.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
-  const data = isJson ? await response.json() : await response.text();
+  const data = response.status === 204 ? null : isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
     const message =
@@ -238,23 +326,28 @@ export const api = {
       request<AuthResponse>("/auth/register", {
         method: "POST",
         body: payload,
+        auth: false,
       }),
     login: (payload: LoginPayload) =>
       request<AuthResponse>("/auth/login", {
         method: "POST",
         body: payload,
+        auth: false,
       }),
-    getUserAccess: (userId: number) =>
-      request<AuthResponse>(`/auth/users/${userId}/access`),
+    me: () => request<AuthResponse>("/auth/me"),
+    listUsers: () => request<UserWithAccess[]>("/auth/users"),
+    updateUser: (userId: number, payload: UserUpdatePayload) =>
+      request<UserWithAccess>(`/auth/users/${userId}`, {
+        method: "PATCH",
+        body: payload,
+      }),
+    deleteUser: (userId: number) =>
+      request<void>(`/auth/users/${userId}`, {
+        method: "DELETE",
+      }),
+    getUserAccess: (userId: number) => request<AuthResponse>(`/auth/users/${userId}/access`),
     listPermissions: () => request<string[]>("/auth/permissions"),
-    logout: () => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      window.localStorage.removeItem("sibooking_token");
-      window.sessionStorage.removeItem("sibooking_token");
-    },
+    logout: clearAuth,
   },
   masterData: {
     listCabang: () => request<Cabang[]>("/master-data/cabang"),
@@ -268,6 +361,10 @@ export const api = {
         method: "PATCH",
         body: payload,
       }),
+    deleteCabang: (cabangId: number) =>
+      request<void>(`/master-data/cabang/${cabangId}`, {
+        method: "DELETE",
+      }),
     listTempat: (query?: { id_cabang?: number; status_tempat?: string }) =>
       request<Tempat[]>("/master-data/tempat", { query }),
     createTempat: (payload: TempatCreatePayload) =>
@@ -280,10 +377,15 @@ export const api = {
         method: "PATCH",
         body: payload,
       }),
+    deleteTempat: (tempatId: number) =>
+      request<void>(`/master-data/tempat/${tempatId}`, {
+        method: "DELETE",
+      }),
   },
   jadwal: {
-    list: (query?: { id_tempat?: number; tanggal?: string }) =>
-      request<Jadwal[]>("/jadwal/", { query }),
+    list: (query?: { id_tempat?: number }) => request<Jadwal[]>("/jadwal/", { query }),
+    listAvailability: (query: { id_tempat: number; tanggal: string }) =>
+      request<Jadwal[]>("/jadwal/availability", { query }),
     listTersedia: () => request<Jadwal[]>("/jadwal/tersedia"),
     create: (payload: JadwalCreatePayload) =>
       request<Jadwal>("/jadwal/", {
@@ -295,6 +397,10 @@ export const api = {
         method: "PATCH",
         body: payload,
       }),
+    delete: (jadwalId: number) =>
+      request<void>(`/jadwal/${jadwalId}`, {
+        method: "DELETE",
+      }),
   },
   reservasi: {
     list: (query?: { id_user?: number; status_reservasi?: string }) =>
@@ -304,10 +410,7 @@ export const api = {
         method: "POST",
         body: payload,
       }),
-    updateStatus: (
-      reservasiId: number,
-      payload: ReservasiUpdateStatusPayload,
-    ) =>
+    updateStatus: (reservasiId: number, payload: ReservasiUpdateStatusPayload) =>
       request<Reservasi>(`/reservasi/${reservasiId}/status`, {
         method: "PATCH",
         body: payload,
@@ -321,10 +424,7 @@ export const api = {
         method: "POST",
         body: payload,
       }),
-    updateStatus: (
-      paymentId: number,
-      payload: PembayaranUpdateStatusPayload,
-    ) =>
+    updateStatus: (paymentId: number, payload: PembayaranUpdateStatusPayload) =>
       request<Pembayaran>(`/pembayaran/${paymentId}/status`, {
         method: "PATCH",
         body: payload,
@@ -339,10 +439,7 @@ export const api = {
         method: "POST",
         body: payload,
       }),
-    updateRefundStatus: (
-      refundId: number,
-      payload: RefundUpdateStatusPayload,
-    ) =>
+    updateRefundStatus: (refundId: number, payload: RefundUpdateStatusPayload) =>
       request<Refund>(`/pembayaran/refunds/${refundId}/status`, {
         method: "PATCH",
         body: payload,
@@ -350,6 +447,7 @@ export const api = {
   },
   laporan: {
     list: () => request<Laporan[]>("/laporan/"),
+    summary: () => request<AdminSummary>("/laporan/summary"),
     create: (payload: LaporanCreatePayload) =>
       request<Laporan>("/laporan/", {
         method: "POST",

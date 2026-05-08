@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.security import create_access_token
 from app.models import User, UserRole
 from app.repositories import users as user_repo
-from app.schemas.auth import AuthResponse, LoginRequest, LogoutResponse, UserCreate, UserRead
+from app.schemas.auth import AuthResponse, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserRead, UserUpdate
 
 
 def _role_names(user: User) -> list[str]:
@@ -59,6 +59,19 @@ def build_auth_response(
         message=message,
     )
 
+
+def build_user_access(user: User) -> UserAccessRead:
+    return UserAccessRead(
+        id_user=user.id_user,
+        nama=user.nama,
+        email=user.email,
+        no_hp=user.no_hp,
+        roles=_role_names(user),
+        permissions=_permission_names(user),
+        status="Active",
+    )
+
+
 def register_user(db: Session, payload: UserCreate) -> AuthResponse:
     """Register a user, assign the default user role, and return an access token."""
     existing_user = find_user_by_email(db, payload.email)
@@ -108,6 +121,37 @@ def get_user_access(db: Session, user_id: int) -> AuthResponse:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
     return build_auth_response(user, message="Akses user berhasil dimuat")
+
+
+def list_users(db: Session) -> list[UserAccessRead]:
+    return [build_user_access(user) for user in user_repo.list_users(db)]
+
+
+def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserAccessRead:
+    user = user_repo.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
+
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email sudah terdaftar") from exc
+
+    db.refresh(user)
+    return build_user_access(user)
+
+
+def delete_user(db: Session, user_id: int) -> None:
+    user = user_repo.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
+    db.delete(user)
+    db.commit()
 
 def find_user_by_email(db: Session, email: str) -> User | None:
     """Find a user by email."""

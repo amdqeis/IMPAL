@@ -43,3 +43,4 @@ class TempatRead(ORMModel):
     nomor_meja: str
     harga: Decimal
     status: str
+    cabang: CabangRead | None = None

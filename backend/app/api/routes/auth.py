@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession, has_permission, require_permissions
 from app.repositories import users as user_repo
-from app.schemas import AuthResponse, COMMON_ERROR_RESPONSES, LoginRequest, LogoutResponse, UserCreate
+from app.schemas import AuthResponse, COMMON_ERROR_RESPONSES, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserUpdate
 from app.services import auth as auth_service
 from app.services.permissions import MANAGE_ROLES, MANAGE_USERS
 
@@ -48,6 +48,33 @@ def logout(_current_user: CurrentUser) -> LogoutResponse:
 
 
 @router.get(
+    "/me",
+    response_model=AuthResponse,
+    summary="Lihat user login",
+    description="Mengembalikan metadata akses untuk user yang sedang login.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def get_me(current_user: CurrentUser) -> AuthResponse:
+    """Return current user access metadata."""
+    return auth_service.build_auth_response(current_user, message="User berhasil dimuat")
+
+
+@router.get(
+    "/users",
+    response_model=list[UserAccessRead],
+    summary="List users",
+    description="Mengembalikan daftar user beserta role dan permission. Membutuhkan permission manage_users.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def list_users(
+    db: DbSession,
+    _current_user=Depends(require_permissions(MANAGE_USERS)),
+) -> list[UserAccessRead]:
+    """Return all users for admin management."""
+    return auth_service.list_users(db)
+
+
+@router.get(
     "/users/{user_id}/access",
     response_model=AuthResponse,
     summary="Lihat akses user",
@@ -59,6 +86,41 @@ def get_user_access(user_id: int, db: DbSession, current_user: CurrentUser) -> A
     if user_id != current_user.id_user and not has_permission(current_user, MANAGE_USERS):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh melihat akses user lain")
     return auth_service.get_user_access(db, user_id)
+
+
+@router.patch(
+    "/users/{user_id}",
+    response_model=UserAccessRead,
+    summary="Update user",
+    description="Memperbarui profil user. User boleh memperbarui dirinya sendiri; manage_users boleh memperbarui semua user.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> UserAccessRead:
+    """Patch user profile data."""
+    if user_id != current_user.id_user and not has_permission(current_user, MANAGE_USERS):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh mengubah user lain")
+    return auth_service.update_user(db, user_id, payload)
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete user",
+    description="Menghapus user. Membutuhkan permission manage_users.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def delete_user(
+    user_id: int,
+    db: DbSession,
+    _current_user=Depends(require_permissions(MANAGE_USERS)),
+):
+    """Delete a user."""
+    auth_service.delete_user(db, user_id)
 
 
 @router.get(
