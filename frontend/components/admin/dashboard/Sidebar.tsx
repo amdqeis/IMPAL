@@ -71,7 +71,7 @@ export function Sidebar({ menu }: SidebarProps) {
           return (
             <a
               key={item.label}
-              href="#"
+              href={item.href ?? "#"}
               onClick={() => setIsOpen(false)}
               className={`relative flex h-11 min-w-0 items-center rounded-xl px-3 text-[14px] transition md:justify-center md:px-0 lg:justify-start lg:gap-4 lg:px-3 ${
                 item.active

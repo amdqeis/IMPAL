@@ -2,6 +2,7 @@ export type AdminMenuItem = {
   label: string;
   icon: "dashboard" | "booking" | "cashflow" | "users" | "schedule";
   active?: boolean;
+  href?: string;
 };
 
 export type BookingSummary = {
@@ -34,11 +35,11 @@ export type AdminBooking = {
 };
 
 export const adminMenu: AdminMenuItem[] = [
-  { label: "Dashboard", icon: "dashboard", active: true },
-  { label: "Booking", icon: "booking" },
-  { label: "Cashflow", icon: "cashflow" },
-  { label: "Data Users", icon: "users" },
-  { label: "Schedule", icon: "schedule" },
+  { label: "Dashboard", icon: "dashboard", active: true, href: "/admin/dashboard" },
+  { label: "Booking", icon: "booking", href: "/admin/booking" },
+  { label: "Cashflow", icon: "cashflow", href: "#" },
+  { label: "Data Users", icon: "users", href: "#" },
+  { label: "Schedule", icon: "schedule", href: "#" },
 ];
 
 export const bookingSummary: BookingSummary = {
