@@ -3,28 +3,32 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
+  Banknote,
   CalendarDays,
   ChevronDown,
-  History,
   LayoutDashboard,
   LogOut,
   LucideIcon,
   MapPin,
   Menu,
+  UsersRound,
   UserCircle,
+  WalletCards,
   X,
 } from "lucide-react";
 
-import type { SidebarMenuItem } from "@/data/dashboardDummy";
+import type { AdminMenuItem } from "@/data/adminDashboardDummy";
 
-const menuIcons: Record<SidebarMenuItem["icon"], LucideIcon> = {
+const menuIcons: Record<AdminMenuItem["icon"], LucideIcon> = {
   booking: CalendarDays,
+  cashflow: Banknote,
   dashboard: LayoutDashboard,
-  history: History,
+  schedule: WalletCards,
+  users: UsersRound,
 };
 
 type SidebarProps = {
-  menu: SidebarMenuItem[];
+  menu: AdminMenuItem[];
 };
 
 export function Sidebar({ menu }: SidebarProps) {
@@ -46,16 +50,16 @@ export function Sidebar({ menu }: SidebarProps) {
         </span>
       </div>
 
-      <button className="mt-5 flex h-[50px] min-w-0 items-center justify-between rounded-full bg-[#CFEED9] px-4 text-[#194B3F] md:justify-center md:px-2 lg:justify-between lg:px-4">
+      <button className="mt-5 flex h-[48px] min-w-0 items-center justify-between rounded-[20px] bg-[#DDF1E5] px-5 text-[#194B3F] md:justify-center md:px-2 lg:justify-between lg:px-5">
         <span className="flex min-w-0 items-center gap-2 text-[18px] font-extrabold">
           <MapPin
             className="h-[24px] w-[24px] shrink-0 fill-[#0B1714] text-[#0B1714]"
             aria-hidden="true"
           />
-          <span className="truncate md:hidden lg:inline">Blok M</span>
+          <span className="truncate md:hidden lg:inline">Depok</span>
         </span>
         <ChevronDown
-          className="hidden h-5 w-5 shrink-0 stroke-[3] lg:block"
+          className="hidden h-5 w-5 shrink-0 stroke-[3] text-black lg:block"
           aria-hidden="true"
         />
       </button>
@@ -76,11 +80,11 @@ export function Sidebar({ menu }: SidebarProps) {
               }`}
             >
               {item.active ? (
-                <span className="absolute left-0 h-7 w-[3px] rounded-full bg-[#F59E0B]" />
+                <span className="absolute left-0 top-1/2 h-[28px] w-[3px] -translate-y-1/2 rounded-full bg-[#F59E0B]" />
               ) : null}
               <span
                 className={`flex h-8 w-8 shrink-0 items-center justify-center ${
-                  item.active ? "text-[#6C63FF]" : "text-[#AEB8C5]"
+                  item.active ? "text-[#6C63FF]" : "text-[#B7C2D0]"
                 }`}
               >
                 <Icon
@@ -105,11 +109,8 @@ export function Sidebar({ menu }: SidebarProps) {
             />
           </div>
           <div className="min-w-0 md:hidden lg:block">
-            <p className="truncate text-[12px] font-bold leading-none text-[#0F5B47]">
-              USER
-            </p>
-            <p className="mt-1 truncate text-[11px] font-semibold text-[#6B7280]">
-              Jonathan
+            <p className="truncate text-[16px] font-extrabold leading-none text-white">
+              <span className="rounded-lg bg-[#236D52] px-5 py-1">ADMIN</span>
             </p>
           </div>
         </div>
@@ -121,7 +122,7 @@ export function Sidebar({ menu }: SidebarProps) {
             className="flex h-10 min-w-0 items-center gap-4 rounded-xl px-3 text-[14px] font-semibold text-[#111827] transition hover:bg-[#FFF8ED] md:justify-center md:px-0 lg:justify-start lg:px-3"
           >
             <UserCircle
-              className="h-[18px] w-[18px] shrink-0 text-[#AEB8C5]"
+              className="h-[18px] w-[18px] shrink-0 text-[#B7C2D0]"
               aria-hidden="true"
             />
             <span className="truncate md:hidden lg:inline">Profile</span>
@@ -132,7 +133,7 @@ export function Sidebar({ menu }: SidebarProps) {
             className="flex h-10 min-w-0 items-center gap-4 rounded-xl px-3 text-[14px] font-semibold text-[#111827] transition hover:bg-[#FFF8ED] md:justify-center md:px-0 lg:justify-start lg:px-3"
           >
             <LogOut
-              className="h-[18px] w-[18px] shrink-0 text-[#AEB8C5]"
+              className="h-[18px] w-[18px] shrink-0 text-[#B7C2D0]"
               aria-hidden="true"
             />
             <span className="truncate md:hidden lg:inline">Logout</span>
@@ -164,7 +165,7 @@ export function Sidebar({ menu }: SidebarProps) {
           aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={isOpen}
           onClick={() => setIsOpen((current) => !current)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#CFEED9] text-[#194B3F]"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#DDF1E5] text-[#194B3F]"
         >
           {isOpen ? (
             <X className="h-5 w-5 stroke-[3]" aria-hidden="true" />

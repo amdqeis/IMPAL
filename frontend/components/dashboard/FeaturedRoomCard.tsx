@@ -26,36 +26,38 @@ type FeaturedRoomCardProps = {
 };
 
 export function FeaturedRoomCard({ room }: FeaturedRoomCardProps) {
-  return (
-    <article className="flex h-full min-h-[11rem] min-w-0 flex-col rounded-2xl border border-[#cde1d7] bg-[#edf8f2] px-4 py-4 shadow-[0_8px_16px_rgba(20,54,44,0.18)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_22px_rgba(20,54,44,0.22)] sm:min-h-[10.75rem] lg:px-5">
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-        <h2 className="min-w-0 text-xl font-black leading-tight tracking-[-0.02em] text-[#174d3d] sm:text-[1.32rem] lg:text-[1.38rem]">
-          {room.title}
-        </h2>
-        {room.badge ? (
-          <span className="shrink-0 rounded-lg border border-[#f1cdbf] bg-[#fff8ef] px-3 py-1 text-sm font-black leading-none text-[#e03636] shadow-[2px_4px_6px_rgba(80,44,26,0.16)] sm:text-base">
-            {room.badge}
-          </span>
-        ) : null}
-      </div>
+  const hasBadge = Boolean(room.badge);
 
-      <div
-        className="mt-5 grid flex-1 grid-cols-2 content-start gap-x-3 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 data-[vip=true]:lg:grid-cols-4"
-        data-vip={room.facilities.length === 4}
+  return (
+    <article className="relative flex min-h-[220px] min-w-0 flex-col rounded-[22px] border border-[#DCEFE4] bg-[#EDF8F2] p-5 shadow-[0_8px_24px_rgba(15,91,71,0.08)] md:h-[220px]">
+      <h2
+        className={`text-[20px] font-bold leading-tight text-[#174D3D] ${
+          hasBadge ? "pr-28" : ""
+        }`}
       >
+        {room.title}
+      </h2>
+
+      {room.badge ? (
+        <span className="absolute right-5 top-5 rounded-xl bg-[#FFF4E8] px-4 py-2 text-[14px] font-bold leading-none text-[#DC2626] shadow-sm">
+          {room.badge}
+        </span>
+      ) : null}
+
+      <div className="mt-6 flex min-w-0 flex-1 flex-wrap items-start justify-evenly gap-4">
         {room.facilities.map((facility) => {
           const Icon = facilityIcons[facility.icon];
 
           return (
             <div
               key={facility.label}
-              className="flex min-w-0 flex-col items-center text-center"
+              className="flex min-w-[72px] flex-1 flex-col items-center text-center"
             >
               <Icon
-                className="h-7 w-7 stroke-[2.4] text-[#098f90] sm:h-8 sm:w-8"
+                className="h-9 w-9 stroke-[2.4] text-[#098F90] lg:h-10 lg:w-10"
                 aria-hidden="true"
               />
-              <p className="mt-1 max-w-full text-[0.68rem] font-extrabold leading-tight text-[#078180] sm:text-[0.7rem]">
+              <p className="mt-2 text-[12px] font-bold leading-tight text-[#078180]">
                 {facility.label}
               </p>
             </div>
@@ -63,11 +65,11 @@ export function FeaturedRoomCard({ room }: FeaturedRoomCardProps) {
         })}
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
-        <p className="min-w-0 text-lg font-black leading-tight text-[#065948] sm:text-[1.14rem] lg:text-[1.28rem]">
+      <div className="mt-auto flex min-w-0 items-end justify-between gap-4">
+        <p className="min-w-0 text-[20px] font-extrabold leading-tight text-[#065948]">
           {room.price}
         </p>
-        <button className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-[#085d4c] px-3 text-xs font-black leading-none text-white shadow-[2px_4px_5px_rgba(8,82,67,0.28)] transition hover:bg-[#064d40] sm:text-sm">
+        <button className="flex h-[42px] shrink-0 items-center justify-center rounded-xl bg-[#0F7B61] px-6 text-[14px] font-extrabold leading-none text-white shadow-md transition hover:bg-[#0B5E4A]">
           BOOK NOW
         </button>
       </div>
