@@ -48,6 +48,18 @@ class UserRead(ORMModel):
     no_hp: str
 
 
+class UserUpdate(BaseModel):
+    nama: str | None = Field(default=None, min_length=1, max_length=255)
+    email: str | None = Field(default=None, min_length=3, max_length=255)
+    no_hp: str | None = Field(default=None, min_length=11, max_length=12)
+
+
+class UserAccessRead(UserRead):
+    roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
+    status: str = "Active"
+
+
 class AuthResponse(BaseModel):
     user: UserRead
     roles: list[str]

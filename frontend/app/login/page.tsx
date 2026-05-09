@@ -11,7 +11,7 @@ export default function LoginPage() {
         {Array.from({ length: 42 }).map((_, index) => (
           <span
             key={`sbs-pattern-${index}`}
-            className="absolute select-none text-[4.2rem] font-black uppercase tracking-[-0.08em] text-white"
+            className="absolute select-none text-[4.2rem] font-black uppercase tracking-normal text-white"
             style={{
               left: `${(index % 6) * 17}%`,
               top: `${Math.floor(index / 6) * 12}%`,
@@ -27,7 +27,7 @@ export default function LoginPage() {
         <div className="grid w-full grid-cols-1 gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16">
           <div className="login-fade-up flex flex-col justify-center">
             <div className="max-w-[34rem]">
-              <div className="font-[family-name:var(--font-display)] text-[4.8rem] leading-[0.84] font-black tracking-[-0.08em] text-[#173b34] drop-shadow-[0_8px_10px_rgba(16,52,45,0.18)] sm:text-[6.6rem] xl:text-[7.8rem]">
+              <div className="font-[family-name:var(--font-display)] text-[4.8rem] font-black leading-[0.84] tracking-normal text-[#173b34] drop-shadow-[0_8px_10px_rgba(16,52,45,0.18)] sm:text-[6.6rem] xl:text-[7.8rem]">
                 LOGIN
               </div>
               <p className="-mt-1 text-2xl font-medium text-[#355057] sm:text-[2.3rem]">
@@ -38,7 +38,7 @@ export default function LoginPage() {
                 <h1 className="text-2xl font-extrabold sm:text-[2.15rem]">
                   Halo, Selamat Datang Kembali.
                 </h1>
-                <p className="mt-5 text-xl leading-8 font-semibold sm:text-[2rem] sm:leading-10">
+                <p className="mt-5 text-xl font-semibold leading-8 sm:text-[2rem] sm:leading-10">
                   Semoga harimu menyenangkan. Masuk untuk melanjutkan booking
                   dan pantau reservasi venue.
                 </p>
@@ -62,7 +62,7 @@ export default function LoginPage() {
               <p className="login-fade-up mt-8 text-xl font-bold text-[#31474a] sm:text-[2rem] [animation-delay:260ms]">
                 Belum punya akun?{" "}
                 <Link
-                  href="#"
+                  href="/register"
                   className="text-[#2a4184] underline decoration-2 underline-offset-4"
                 >
                   Daftar.

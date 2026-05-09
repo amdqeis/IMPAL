@@ -1,7 +1,7 @@
-from .auth import AuthResponse, LoginRequest, LogoutResponse, PermissionRead, RoleRead, UserCreate, UserRead
+from .auth import AuthResponse, LoginRequest, LogoutResponse, PermissionRead, RoleRead, UserAccessRead, UserCreate, UserRead, UserUpdate
 from .common import COMMON_ERROR_RESPONSES, ErrorResponse
 from .jadwal import JadwalAvailabilityRead, JadwalCreate, JadwalRead, JadwalUpdate
-from .laporan import LaporanCreate, LaporanRead, LaporanUpdate
+from .laporan import DashboardSummaryRead, LaporanCreate, LaporanRead, LaporanUpdate
 from .master_data import CabangCreate, CabangRead, CabangUpdate, TempatCreate, TempatRead, TempatUpdate
 from .pembayaran import (
     PaymentCreate,
@@ -22,6 +22,7 @@ __all__ = [
     "CabangUpdate",
     "COMMON_ERROR_RESPONSES",
     "ErrorResponse",
+    "DashboardSummaryRead",
     "JadwalCreate",
     "JadwalAvailabilityRead",
     "JadwalRead",
@@ -48,5 +49,7 @@ __all__ = [
     "TempatRead",
     "TempatUpdate",
     "UserCreate",
+    "UserAccessRead",
     "UserRead",
+    "UserUpdate",
 ]

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import func, select
 
 from app.api.deps import DbSession, require_permissions
-from app.schemas import COMMON_ERROR_RESPONSES, LaporanCreate, LaporanRead, LaporanUpdate
+from app.models import Payment, Reservasi
+from app.schemas import COMMON_ERROR_RESPONSES, DashboardSummaryRead, LaporanCreate, LaporanRead, LaporanUpdate
 from app.services import laporan as service
 from app.services.permissions import MANAGE_REPORTS, VIEW_REPORTS
 
@@ -22,6 +24,34 @@ def list_laporan(
 ):
     """Return all reports."""
     return service.list_laporan(db)
+
+
+@router.get(
+    "/summary",
+    response_model=DashboardSummaryRead,
+    summary="Ringkasan dashboard",
+    description="Mengembalikan metrik ringkas booking dan pembayaran untuk dashboard/cashflow admin.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def get_dashboard_summary(
+    db: DbSession,
+    _current_user=Depends(require_permissions(VIEW_REPORTS, MANAGE_REPORTS)),
+) -> DashboardSummaryRead:
+    total_bookings = db.scalar(select(func.count(Reservasi.id_reservasi))) or 0
+    active_bookings = (
+        db.scalar(select(func.count(Reservasi.id_reservasi)).where(Reservasi.status.in_(("pending", "confirmed"))))
+        or 0
+    )
+    paid_payments = db.scalar(select(func.count(Payment.id_payment)).where(Payment.status == "paid")) or 0
+    pending_payments = db.scalar(select(func.count(Payment.id_payment)).where(Payment.status == "pending")) or 0
+    income_total = db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.status == "paid")) or 0
+    return DashboardSummaryRead(
+        total_bookings=total_bookings,
+        active_bookings=active_bookings,
+        paid_payments=paid_payments,
+        pending_payments=pending_payments,
+        income_total=str(income_total),
+    )
 
 
 @router.post(

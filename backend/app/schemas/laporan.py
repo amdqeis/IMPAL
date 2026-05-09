@@ -22,3 +22,11 @@ class LaporanRead(ORMModel):
     tipe: str
     lampiran: str
     dibuat_oleh: int
+
+
+class DashboardSummaryRead(BaseModel):
+    total_bookings: int
+    active_bookings: int
+    paid_payments: int
+    pending_payments: int
+    income_total: str

@@ -4,14 +4,15 @@ import sys
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from datetime import date, time
+from datetime import date, time, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
 
 from app.core.security import validate_password_strength
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
 from app.models import (
+    Base,
     Cabang,
     Jadwal,
     Laporan,
@@ -38,20 +39,40 @@ def _build_user(*, nama: str, email: str, password: str, no_hp: str) -> User:
     user.set_password(password)
     return user
 
+def reset_database():
+    """
+    Menghapus semua tabel lalu membuat ulang tabel berdasarkan model SQLAlchemy.
+    Gunakan hanya untuk development.
+    """
+    print("Dropping all tables...")
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    print("Creating all tables...")
+    print("Database reset completed.")
+
 
 def seed_dummy_data() -> None:
-    """Insert a small, consistent dummy dataset for local development."""
+    """Insert a broad, consistent dummy dataset for local development."""
+    reset_database()
     with SessionLocal() as db:
         existing_user = db.scalar(select(User.id_user).limit(1))
         if existing_user is not None:
             print("Dummy data already exists. Skipping seed.")
             return
 
-        cabang_list = [
-            Cabang(nama="Cabang Jakarta", lokasi="Jakarta"),
-            Cabang(nama="Cabang Bandung", lokasi="Bandung"),
-            Cabang(nama="Cabang Malang", lokasi="Malang"),
+        today = date.today()
+        common_password = "Password123"
+
+        cabang_specs = [
+            ("SiBooking Blok M", "Jakarta Selatan"),
+            ("SiBooking Depok", "Depok"),
+            ("SiBooking Dago", "Bandung"),
+            ("SiBooking Darmo", "Surabaya"),
+            ("SiBooking Gejayan", "Yogyakarta"),
+            ("SiBooking Empty Branch", "Cabang tanpa reservasi untuk empty state"),
         ]
+        cabang_list = [Cabang(nama=nama, lokasi=lokasi) for nama, lokasi in cabang_specs]
         db.add_all(cabang_list)
         db.flush()
 
@@ -61,216 +82,300 @@ def seed_dummy_data() -> None:
         db.add_all([role_owner, role_admin, role_user])
         db.flush()
 
+        user_specs = [
+            ("Andre Owner", "owner@sibooking.test", "081200000001"),
+            ("Nadia Admin", "admin@sibooking.test", "081200000002"),
+            ("Ruviera Manager", "manager@sibooking.test", "081200000003"),
+            ("Ahmad Alvaro", "ahmad@gmail.com", "081200000004"),
+            ("Zalfa Ismail", "zalfa@gmail.com", "081200000005"),
+            ("Ali Ahabadin", "ali@gmail.com", "081200000006"),
+            ("Salman Pratama", "salman@gmail.com", "081200000007"),
+            ("Nabila Putri", "nabila@gmail.com", "081200000008"),
+            ("Dimas Arya", "dimas@gmail.com", "081200000009"),
+            ("Adinda Rahma", "adinda@gmail.com", "081200000010"),
+            ("Bima Saputra", "bima@gmail.com", "081200000011"),
+            ("Citra Lestari", "citra@gmail.com", "081200000012"),
+            ("Dewi Kartika", "dewi@gmail.com", "081200000013"),
+            ("Eka Nugraha", "eka@gmail.com", "081200000014"),
+            ("Fajar Hidayat", "fajar@gmail.com", "081200000015"),
+            ("Gita Anggraini", "gita@gmail.com", "081200000016"),
+            ("Hana Salsabila", "hana@gmail.com", "081200000017"),
+            ("Ivan Mahendra", "ivan@gmail.com", "081200000018"),
+            ("Jihan Aulia", "jihan@gmail.com", "081200000019"),
+            ("Kevin Wijaya", "kevin@gmail.com", "081200000020"),
+        ]
         users = [
             _build_user(
-                nama="Ahmad",
-                email="ahmad@gmail.com",
-                password="Password123",
-                no_hp="081200000001",
-            ),
-            _build_user(
-                nama="Qeis",
-                email="qeis@gmail.com",
-                password="Password123",
-                no_hp="081200000002",
-            ),
-            _build_user(
-                nama="Ruviera",
-                email="ruviera@gmail.com",
-                password="Password123",
-                no_hp="081200000003",
-            ),
-            _build_user(
-                nama="Alvaro",
-                email="alvaro@gmail.com",
-                password="Password123",
-                no_hp="081200000004",
-            ),
-            _build_user(
-                nama="Zalfa",
-                email="zalfa@gmail.com",
-                password="Password123",
-                no_hp="081200000005",
-            ),
-            _build_user(
-                nama="Ahabadin",
-                email="ahabadin@gmail.com",
-                password="Password123",
-                no_hp="081200000006",
-            ),
-            _build_user(
-                nama="Salman",
-                email="salman@gmail.com",
-                password="Password123",
-                no_hp="081200000007",
-            ),
-            _build_user(
-                nama="Newt",
-                email="newt@gmail.com",
-                password="Password123",
-                no_hp="081200000008",
-            ),
-            _build_user(
-                nama="Thomas",
-                email="thomas@gmail.com",
-                password="Password123",
-                no_hp="081200000009",
-            ),
-            _build_user(
-                nama="Adinda",
-                email="adinda@gmail.com",
-                password="Password123",
-                no_hp="081200000010",
-            ),
+                nama=nama,
+                email=email,
+                password=common_password,
+                no_hp=no_hp,
+            )
+            for nama, email, no_hp in user_specs
         ]
         db.add_all(users)
         db.flush()
 
-        tempat_list = [
-            Tempat(id_cabang=cabang_list[0].id_cabang, nomor_meja="A01", harga=Decimal("150000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[0].id_cabang, nomor_meja="A02", harga=Decimal("160000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[0].id_cabang, nomor_meja="VIP1", harga=Decimal("350000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[1].id_cabang, nomor_meja="B01", harga=Decimal("180000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[1].id_cabang, nomor_meja="B02", harga=Decimal("190000.00"), status="booked"),
-            Tempat(id_cabang=cabang_list[1].id_cabang, nomor_meja="B03", harga=Decimal("200000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[2].id_cabang, nomor_meja="C01", harga=Decimal("210000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[2].id_cabang, nomor_meja="C02", harga=Decimal("220000.00"), status="booked"),
-            Tempat(id_cabang=cabang_list[2].id_cabang, nomor_meja="C03", harga=Decimal("230000.00"), status="available"),
-            Tempat(id_cabang=cabang_list[2].id_cabang, nomor_meja="V01", harga=Decimal("300000.00"), status="available"),
-        ]
-        db.add_all(tempat_list)
-        db.flush()
-
+        permission_role_map = {
+            "manage_users": role_owner,
+            "manage_roles": role_owner,
+            "approve_refunds": role_owner,
+            "manage_reports": role_owner,
+            "view_reports": role_admin,
+            "manage_branches": role_admin,
+            "manage_tables": role_admin,
+            "manage_schedules": role_admin,
+            "manage_reservations": role_admin,
+            "manage_payments": role_admin,
+            "view_locations": role_user,
+            "view_schedules": role_user,
+            "create_reservations": role_user,
+            "view_reservations": role_user,
+            "create_payments": role_user,
+            "view_payments": role_user,
+            "request_refunds": role_user,
+        }
         permissions = [
-            Permission(id_role=role_owner.id_role, nama_permission="manage_users"),
-            Permission(id_role=role_owner.id_role, nama_permission="manage_roles"),
-            Permission(id_role=role_owner.id_role, nama_permission="approve_refunds"),
-            Permission(id_role=role_owner.id_role, nama_permission="view_reports"),
-            Permission(id_role=role_owner.id_role, nama_permission="manage_reports"),
-            Permission(id_role=role_admin.id_role, nama_permission="manage_branches"),
-            Permission(id_role=role_admin.id_role, nama_permission="manage_tables"),
-            Permission(id_role=role_admin.id_role, nama_permission="manage_schedules"),
-            Permission(id_role=role_admin.id_role, nama_permission="manage_reservations"),
-            Permission(id_role=role_admin.id_role, nama_permission="manage_payments"),
-            Permission(id_role=role_user.id_role, nama_permission="view_locations"),
-            Permission(id_role=role_user.id_role, nama_permission="view_schedules"),
-            Permission(id_role=role_user.id_role, nama_permission="create_reservations"),
-            Permission(id_role=role_user.id_role, nama_permission="view_reservations"),
-            Permission(id_role=role_user.id_role, nama_permission="create_payments"),
-            Permission(id_role=role_user.id_role, nama_permission="view_payments"),
-            Permission(id_role=role_user.id_role, nama_permission="request_refunds"),
+            Permission(id_role=role.id_role, nama_permission=permission)
+            for permission, role in permission_role_map.items()
         ]
         db.add_all(permissions)
 
+        role_assignments = [
+            (0, [role_owner, role_admin, role_user]),
+            (1, [role_admin, role_user]),
+            (2, [role_admin, role_user]),
+            (3, [role_user]),
+            (4, [role_user]),
+            (5, [role_user]),
+            (6, [role_user]),
+            (7, [role_user]),
+            (8, [role_user]),
+            (9, [role_user]),
+            (10, [role_user]),
+            (11, [role_user]),
+            (12, [role_user]),
+            (13, [role_user]),
+            (14, [role_user]),
+            (15, [role_user]),
+            (16, [role_admin, role_user]),
+            (17, [role_user]),
+            (18, [role_user]),
+            (19, [role_user]),
+        ]
         db.add_all(
             [
-                UserRole(id_user=users[0].id_user, id_role=role_owner.id_role),
-                UserRole(id_user=users[0].id_user, id_role=role_admin.id_role),
-                UserRole(id_user=users[0].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[1].id_user, id_role=role_admin.id_role),
-                UserRole(id_user=users[1].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[2].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[3].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[4].id_user, id_role=role_admin.id_role),
-                UserRole(id_user=users[4].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[5].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[6].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[7].id_user, id_role=role_admin.id_role),
-                UserRole(id_user=users[7].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[8].id_user, id_role=role_user.id_role),
-                UserRole(id_user=users[9].id_user, id_role=role_user.id_role),
+                UserRole(id_user=users[user_index].id_user, id_role=role.id_role)
+                for user_index, roles in role_assignments
+                for role in roles
             ]
         )
 
-        jadwal_list = [
-            Jadwal(id_tempat=tempat_list[0].id_tempat, jam_mulai=time(9, 0), jam_selesai=time(11, 0)),
-            Jadwal(id_tempat=tempat_list[1].id_tempat, jam_mulai=time(11, 0), jam_selesai=time(13, 0)),
-            Jadwal(id_tempat=tempat_list[2].id_tempat, jam_mulai=time(13, 0), jam_selesai=time(15, 0)),
-            Jadwal(id_tempat=tempat_list[3].id_tempat, jam_mulai=time(15, 0), jam_selesai=time(17, 0)),
-            Jadwal(id_tempat=tempat_list[4].id_tempat, jam_mulai=time(10, 0), jam_selesai=time(12, 0)),
-            Jadwal(id_tempat=tempat_list[5].id_tempat, jam_mulai=time(12, 0), jam_selesai=time(14, 0)),
-            Jadwal(id_tempat=tempat_list[6].id_tempat, jam_mulai=time(14, 0), jam_selesai=time(16, 0)),
-            Jadwal(id_tempat=tempat_list[7].id_tempat, jam_mulai=time(16, 0), jam_selesai=time(18, 0)),
-            Jadwal(id_tempat=tempat_list[8].id_tempat, jam_mulai=time(18, 0), jam_selesai=time(20, 0)),
-            Jadwal(id_tempat=tempat_list[9].id_tempat, jam_mulai=time(20, 0), jam_selesai=time(22, 0)),
+        table_templates = [
+            ("REG", Decimal("75000.00"), "available"),
+            ("REG", Decimal("85000.00"), "occupied"),
+            ("PREM", Decimal("125000.00"), "available"),
+            ("PREM", Decimal("135000.00"), "maintenance"),
+            ("VIP", Decimal("200000.00"), "available"),
+            ("VIP", Decimal("225000.00"), "booked"),
         ]
+        tempat_list: list[Tempat] = []
+        for branch_index, cabang in enumerate(cabang_list):
+            for table_index, (prefix, price, status) in enumerate(table_templates, start=1):
+                tempat_list.append(
+                    Tempat(
+                        id_cabang=cabang.id_cabang,
+                        nomor_meja=f"{prefix}-{branch_index + 1}{table_index:02d}",
+                        harga=price + Decimal(branch_index * 10000),
+                        status=status,
+                    )
+                )
+        db.add_all(tempat_list)
+        db.flush()
+
+        slot_templates = [
+            (time(9, 0), time(11, 0)),
+            (time(11, 0), time(13, 0)),
+            (time(13, 0), time(15, 0)),
+            (time(15, 0), time(17, 0)),
+            (time(17, 0), time(19, 0)),
+            (time(19, 0), time(21, 0)),
+        ]
+        jadwal_list: list[Jadwal] = []
+        for tempat in tempat_list:
+            for start_time, end_time in slot_templates:
+                jadwal_list.append(
+                    Jadwal(
+                        id_tempat=tempat.id_tempat,
+                        jam_mulai=start_time,
+                        jam_selesai=end_time,
+                    )
+                )
         db.add_all(jadwal_list)
         db.flush()
 
+        report_types = [
+            "harian",
+            "mingguan",
+            "bulanan",
+            "audit",
+            "operasional",
+            "keuangan",
+            "refund",
+            "reservasi",
+            "cabang",
+            "jadwal",
+            "cashflow",
+            "inventory",
+        ]
+        report_makers = [users[0], users[1], users[2], users[16]]
         laporan_list = [
-            Laporan(tipe="harian", lampiran="laporan_harian_01.pdf", dibuat_oleh=users[0].id_user),
-            Laporan(tipe="mingguan", lampiran="laporan_mingguan_02.pdf", dibuat_oleh=users[1].id_user),
-            Laporan(tipe="bulanan", lampiran="laporan_bulanan_03.pdf", dibuat_oleh=users[2].id_user),
-            Laporan(tipe="audit", lampiran="laporan_audit_04.pdf", dibuat_oleh=users[3].id_user),
-            Laporan(tipe="operasional", lampiran="laporan_operasional_05.pdf", dibuat_oleh=users[4].id_user),
-            Laporan(tipe="keuangan", lampiran="laporan_keuangan_06.pdf", dibuat_oleh=users[5].id_user),
-            Laporan(tipe="harian", lampiran="laporan_harian_07.pdf", dibuat_oleh=users[6].id_user),
-            Laporan(tipe="mingguan", lampiran="laporan_mingguan_08.pdf", dibuat_oleh=users[7].id_user),
-            Laporan(tipe="bulanan", lampiran="laporan_bulanan_09.pdf", dibuat_oleh=users[8].id_user),
-            Laporan(tipe="audit", lampiran="laporan_audit_10.pdf", dibuat_oleh=users[9].id_user),
+            Laporan(
+                tipe=report_type,
+                lampiran=f"laporan_{report_type}_{index + 1:02d}.pdf",
+                dibuat_oleh=report_makers[index % len(report_makers)].id_user,
+            )
+            for index, report_type in enumerate(report_types)
         ]
         db.add_all(laporan_list)
 
-        reservasi_list = [
-            Reservasi(id_user=users[0].id_user, id_tempat=tempat_list[0].id_tempat, id_jadwal=jadwal_list[0].id_jadwal, tanggal=date(2026, 4, 10), status="confirmed", total_harga=Decimal("150000.00")),
-            Reservasi(id_user=users[1].id_user, id_tempat=tempat_list[1].id_tempat, id_jadwal=jadwal_list[1].id_jadwal, tanggal=date(2026, 4, 10), status="pending", total_harga=Decimal("160000.00")),
-            Reservasi(id_user=users[2].id_user, id_tempat=tempat_list[2].id_tempat, id_jadwal=jadwal_list[2].id_jadwal, tanggal=date(2026, 4, 11), status="cancelled", total_harga=Decimal("170000.00")),
-            Reservasi(id_user=users[3].id_user, id_tempat=tempat_list[3].id_tempat, id_jadwal=jadwal_list[3].id_jadwal, tanggal=date(2026, 4, 11), status="confirmed", total_harga=Decimal("180000.00")),
-            Reservasi(id_user=users[4].id_user, id_tempat=tempat_list[4].id_tempat, id_jadwal=jadwal_list[4].id_jadwal, tanggal=date(2026, 4, 12), status="completed", total_harga=Decimal("190000.00")),
-            Reservasi(id_user=users[5].id_user, id_tempat=tempat_list[5].id_tempat, id_jadwal=jadwal_list[5].id_jadwal, tanggal=date(2026, 4, 12), status="pending", total_harga=Decimal("200000.00")),
-            Reservasi(id_user=users[6].id_user, id_tempat=tempat_list[6].id_tempat, id_jadwal=jadwal_list[6].id_jadwal, tanggal=date(2026, 4, 13), status="confirmed", total_harga=Decimal("210000.00")),
-            Reservasi(id_user=users[7].id_user, id_tempat=tempat_list[7].id_tempat, id_jadwal=jadwal_list[7].id_jadwal, tanggal=date(2026, 4, 13), status="completed", total_harga=Decimal("220000.00")),
-            Reservasi(id_user=users[8].id_user, id_tempat=tempat_list[8].id_tempat, id_jadwal=jadwal_list[8].id_jadwal, tanggal=date(2026, 4, 14), status="confirmed", total_harga=Decimal("230000.00")),
-            Reservasi(id_user=users[9].id_user, id_tempat=tempat_list[9].id_tempat, id_jadwal=jadwal_list[9].id_jadwal, tanggal=date(2026, 4, 14), status="pending", total_harga=Decimal("350000.00")),
+        # Keep active reservations unique per table/schedule/date to satisfy
+        # uq_reservasi_active_slot while still covering many status cases.
+        reservation_statuses = [
+            "pending",
+            "confirmed",
+            "completed",
+            "cancelled",
+            "declined",
+            "no_show",
+            "expired",
         ]
+        reservasi_list: list[Reservasi] = []
+        active_branch_count = len(cabang_list) - 1
+        for branch_index in range(active_branch_count):
+            branch_tables = tempat_list[branch_index * len(table_templates):(branch_index + 1) * len(table_templates)]
+            for table_index, tempat in enumerate(branch_tables):
+                table_slots = [
+                    jadwal
+                    for jadwal in jadwal_list
+                    if jadwal.id_tempat == tempat.id_tempat
+                ]
+                for slot_index, jadwal in enumerate(table_slots[:5]):
+                    status = reservation_statuses[(branch_index + table_index + slot_index) % len(reservation_statuses)]
+                    day_offset = slot_index - 2 + branch_index
+                    if status == "pending":
+                        day_offset = abs(day_offset) + 1
+                    elif status == "confirmed":
+                        day_offset = max(day_offset, 0)
+                    total = tempat.harga * Decimal((slot_index % 3) + 1)
+                    reservasi_list.append(
+                        Reservasi(
+                            id_user=users[(branch_index * 4 + table_index + slot_index + 3) % len(users)].id_user,
+                            id_tempat=tempat.id_tempat,
+                            id_jadwal=jadwal.id_jadwal,
+                            tanggal=today + timedelta(days=day_offset),
+                            status=status,
+                            total_harga=total,
+                        )
+                    )
+
+        # Explicit edge cases for dashboard and API filtering.
+        edge_case_specs = [
+            (0, 0, 5, today + timedelta(days=7), "pending", users[3]),
+            (0, 1, 5, today + timedelta(days=8), "pending", users[4]),
+            (1, 0, 5, today + timedelta(days=1), "pending", users[5]),
+            (2, 0, 5, today + timedelta(days=2), "confirmed", users[6]),
+            (3, 2, 5, today - timedelta(days=4), "completed", users[7]),
+            (4, 3, 5, today - timedelta(days=1), "cancelled", users[8]),
+        ]
+        for branch_index, table_index, slot_index, booking_date, status, user in edge_case_specs:
+            tempat = tempat_list[branch_index * len(table_templates) + table_index]
+            jadwal = [
+                schedule for schedule in jadwal_list if schedule.id_tempat == tempat.id_tempat
+            ][slot_index]
+            reservasi_list.append(
+                Reservasi(
+                    id_user=user.id_user,
+                    id_tempat=tempat.id_tempat,
+                    id_jadwal=jadwal.id_jadwal,
+                    tanggal=booking_date,
+                    status=status,
+                    total_harga=tempat.harga,
+                )
+            )
+
         db.add_all(reservasi_list)
         db.flush()
 
-        payments = [
-            Payment(id_reservasi=reservasi_list[0].id_reservasi, amount=Decimal("150000.00"), status="paid"),
-            Payment(id_reservasi=reservasi_list[1].id_reservasi, amount=Decimal("160000.00"), status="unpaid"),
-            Payment(id_reservasi=reservasi_list[2].id_reservasi, amount=Decimal("170000.00"), status="refunded"),
-            Payment(id_reservasi=reservasi_list[3].id_reservasi, amount=Decimal("180000.00"), status="paid"),
-            Payment(id_reservasi=reservasi_list[4].id_reservasi, amount=Decimal("190000.00"), status="paid"),
-            Payment(id_reservasi=reservasi_list[5].id_reservasi, amount=Decimal("200000.00"), status="pending"),
-            Payment(id_reservasi=reservasi_list[6].id_reservasi, amount=Decimal("210000.00"), status="paid"),
-            Payment(id_reservasi=reservasi_list[7].id_reservasi, amount=Decimal("220000.00"), status="paid"),
-            Payment(id_reservasi=reservasi_list[8].id_reservasi, amount=Decimal("230000.00"), status="paid"),
-            Payment(id_reservasi=reservasi_list[9].id_reservasi, amount=Decimal("350000.00"), status="pending"),
-        ]
+        payment_status_by_reservation = {
+            "pending": ["pending", "unpaid", "failed"],
+            "confirmed": ["paid", "paid", "pending"],
+            "completed": ["paid", "paid", "refunded"],
+            "cancelled": ["refunded", "void", "pending"],
+            "declined": ["failed", "refunded", "void"],
+            "no_show": ["paid", "refunded"],
+            "expired": ["expired", "unpaid"],
+        }
+        payments: list[Payment] = []
+        for index, reservasi in enumerate(reservasi_list):
+            statuses = payment_status_by_reservation.get(reservasi.status, ["pending"])
+            payment_status = statuses[index % len(statuses)]
+            amount = reservasi.total_harga
+            if payment_status == "refunded":
+                amount = reservasi.total_harga
+            elif payment_status == "failed":
+                amount = Decimal("0.00")
+            payments.append(
+                Payment(
+                    id_reservasi=reservasi.id_reservasi,
+                    amount=amount,
+                    status=payment_status,
+                )
+            )
         db.add_all(payments)
         db.flush()
 
+        gateways = ["midtrans", "xendit", "manual", "cashier"]
         payment_logs = [
-            PaymentLog(id_payment=payments[0].id_payment, response='{"gateway":"midtrans","status":"success","reference":"PAY-001"}'),
-            PaymentLog(id_payment=payments[1].id_payment, response='{"gateway":"midtrans","status":"waiting","reference":"PAY-002"}'),
-            PaymentLog(id_payment=payments[2].id_payment, response='{"gateway":"midtrans","status":"refund","reference":"PAY-003"}'),
-            PaymentLog(id_payment=payments[3].id_payment, response='{"gateway":"xendit","status":"success","reference":"PAY-004"}'),
-            PaymentLog(id_payment=payments[4].id_payment, response='{"gateway":"xendit","status":"success","reference":"PAY-005"}'),
-            PaymentLog(id_payment=payments[5].id_payment, response='{"gateway":"xendit","status":"pending","reference":"PAY-006"}'),
-            PaymentLog(id_payment=payments[6].id_payment, response='{"gateway":"midtrans","status":"success","reference":"PAY-007"}'),
-            PaymentLog(id_payment=payments[7].id_payment, response='{"gateway":"midtrans","status":"success","reference":"PAY-008"}'),
-            PaymentLog(id_payment=payments[8].id_payment, response='{"gateway":"xendit","status":"success","reference":"PAY-009"}'),
-            PaymentLog(id_payment=payments[9].id_payment, response='{"gateway":"xendit","status":"pending","reference":"PAY-010"}'),
+            PaymentLog(
+                id_payment=payment.id_payment,
+                response=(
+                    '{"gateway":"%s","status":"%s","reference":"PAY-%04d","amount":"%s"}'
+                    % (
+                        gateways[index % len(gateways)],
+                        payment.status,
+                        index + 1,
+                        payment.amount,
+                    )
+                ),
+            )
+            for index, payment in enumerate(payments)
         ]
         db.add_all(payment_logs)
 
+        refund_statuses = ["pending", "approved", "rejected", "processed"]
+        refundable_payments = [
+            payment
+            for payment in payments
+            if payment.status in {"paid", "refunded", "pending", "void"}
+        ]
         refunds = [
-            Refund(id_payment=payments[0].id_payment, amount=Decimal("50000.00"), status="rejected"),
-            Refund(id_payment=payments[1].id_payment, amount=Decimal("80000.00"), status="pending"),
-            Refund(id_payment=payments[2].id_payment, amount=Decimal("170000.00"), status="approved"),
-            Refund(id_payment=payments[3].id_payment, amount=Decimal("25000.00"), status="rejected"),
-            Refund(id_payment=payments[4].id_payment, amount=Decimal("40000.00"), status="pending"),
-            Refund(id_payment=payments[5].id_payment, amount=Decimal("100000.00"), status="pending"),
-            Refund(id_payment=payments[6].id_payment, amount=Decimal("30000.00"), status="rejected"),
-            Refund(id_payment=payments[7].id_payment, amount=Decimal("50000.00"), status="approved"),
-            Refund(id_payment=payments[8].id_payment, amount=Decimal("60000.00"), status="pending"),
-            Refund(id_payment=payments[9].id_payment, amount=Decimal("120000.00"), status="pending"),
+            Refund(
+                id_payment=payment.id_payment,
+                amount=min(payment.amount, Decimal("50000.00") + Decimal(index * 5000)),
+                status=refund_statuses[index % len(refund_statuses)],
+            )
+            for index, payment in enumerate(refundable_payments[:30])
         ]
         db.add_all(refunds)
 
         db.commit()
-        print("Dummy data inserted successfully.")
+        print(
+            "Dummy data inserted successfully: "
+            f"{len(cabang_list)} cabang, {len(tempat_list)} tempat, "
+            f"{len(jadwal_list)} jadwal, {len(users)} users, "
+            f"{len(reservasi_list)} reservasi, {len(payments)} payments."
+        )
 
 
 if __name__ == "__main__":

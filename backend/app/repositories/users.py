@@ -12,6 +12,10 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     return db.scalar(select(User).where(User.email == email))
 
 
+def list_users(db: Session) -> list[User]:
+    return list(db.scalars(select(User).order_by(User.id_user)).all())
+
+
 def get_role_by_name(db: Session, role_name: str) -> Role | None:
     return db.scalar(select(Role).where(Role.nama_role == role_name))
 
