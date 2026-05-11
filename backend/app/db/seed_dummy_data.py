@@ -62,7 +62,7 @@ def seed_dummy_data() -> None:
             return
 
         today = date.today()
-        common_password = "Password123"
+        common_password = "123123123A"
 
         cabang_specs = [
             ("SiBooking Blok M", "Jakarta Selatan"),

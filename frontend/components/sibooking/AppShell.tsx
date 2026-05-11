@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 
 import { api, getStoredAuth, type AuthResponse, type Cabang } from "@/lib/api";
+import { hasPrivilegedRole } from "@/lib/auth";
 
 type Role = "user" | "admin";
 type MenuItem = {
@@ -91,23 +92,25 @@ export function AppShell({ role, children }: AppShellProps) {
   const [branchesLoading, setBranchesLoading] = useState(true);
   const [branchesError, setBranchesError] = useState<string | null>(null);
   const [auth] = useState<AuthResponse | null>(() => getStoredAuth());
+  const loginPath = role === "admin" ? "/admin/login" : "/login";
 
   useEffect(() => {
     const stored = getStoredAuth();
 
     if (!stored) {
-      router.replace("/login");
+      router.replace(loginPath);
       return;
     }
 
-    const roles = stored.roles.map((item) => item.toLowerCase());
-    if (role === "admin" && !roles.includes("admin")) {
+    const isPrivileged = hasPrivilegedRole(stored.roles);
+    if (role === "admin" && !isPrivileged) {
       router.replace("/user/dashboard");
+      return;
     }
-    if (role === "user" && roles.includes("admin")) {
+    if (role === "user" && isPrivileged) {
       router.replace("/admin/dashboard");
     }
-  }, [role, router]);
+  }, [loginPath, role, router]);
 
   const menu = role === "admin" ? adminMenu : userMenu;
   const profileHref = role === "admin" ? "/admin/profile" : "/user/profile";
@@ -247,7 +250,7 @@ export function AppShell({ role, children }: AppShellProps) {
               onClick={() => {
                 api.auth.logout();
                 setIsOpen(false);
-                router.replace("/login");
+                router.replace(loginPath);
               }}
               className="flex h-10 min-w-0 items-center gap-4 rounded-xl px-2 text-left text-[18px] font-extrabold text-black transition hover:bg-[#FFF8ED] md:justify-center md:px-0 lg:justify-start lg:px-2"
             >
@@ -263,6 +266,7 @@ export function AppShell({ role, children }: AppShellProps) {
       branchesError,
       branchesLoading,
       displayName,
+      loginPath,
       menu,
       pathname,
       profileHref,

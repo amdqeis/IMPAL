@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { ApiError, api, persistAuth } from "@/lib/api";
+import { useToast } from "@/components/sibooking/ToastProvider";
+import { ApiError, api, clearAuth, persistAuth } from "@/lib/api";
+import { isAllowedForLoginMode, type LoginMode } from "@/lib/auth";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail tidak valid"),
@@ -16,8 +19,40 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+type LoginFormProps = {
+  mode?: LoginMode;
+};
+
+const loginConfig = {
+  user: {
+    alternateHref: "/admin/login",
+    alternateLabel: "Masuk sebagai admin/owner",
+    redirectTo: "/user/dashboard",
+    roleError: "Akun admin/owner harus masuk lewat halaman login admin.",
+    submitLabel: "Login",
+  },
+  admin: {
+    alternateHref: "/login",
+    alternateLabel: "Masuk sebagai user",
+    redirectTo: "/admin/dashboard",
+    roleError: "Akun ini tidak memiliki akses admin/owner.",
+    submitLabel: "Login Admin",
+  },
+} satisfies Record<
+  LoginMode,
+  {
+    alternateHref: string;
+    alternateLabel: string;
+    redirectTo: string;
+    roleError: string;
+    submitLabel: string;
+  }
+>;
+
+export function LoginForm({ mode = "user" }: LoginFormProps) {
   const router = useRouter();
+  const toast = useToast();
+  const config = loginConfig[mode];
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -41,23 +76,39 @@ export function LoginForm() {
         password: values.password,
       });
 
-      persistAuth(auth, values.rememberMe);
-
-      const roles = auth.roles.map((role) => role.toLowerCase());
-      router.push(roles.includes("admin") ? "/admin/dashboard" : "/user/dashboard");
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError("E-mail atau kata sandi salah.");
+      if (!isAllowedForLoginMode(auth.roles, mode)) {
+        clearAuth();
+        setError(config.roleError);
+        toast.error(config.roleError);
         return;
       }
 
-      setError(err instanceof Error ? err.message : "Login gagal. Coba lagi.");
+      persistAuth(auth, values.rememberMe);
+      toast.success("Login berhasil, diarahkan ke dashboard.");
+
+      router.push(config.redirectTo);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError("E-mail atau kata sandi salah.");
+        toast.error("E-mail atau kata sandi salah.");
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : "Login gagal. Coba lagi.";
+      setError(message);
+      toast.error(message);
     }
+  };
+
+  const handleInvalidSubmit = () => {
+    const message = "Periksa kembali data login.";
+    setError(message);
+    toast.error(message);
   };
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit, () => setError("Periksa kembali data login."))}
+      onSubmit={handleSubmit(onSubmit, handleInvalidSubmit)}
       className="login-fade-up w-full max-w-[33rem] space-y-6 [animation-delay:120ms]"
     >
       <div>
@@ -126,8 +177,16 @@ export function LoginForm() {
           disabled={isSubmitting}
           className="inline-flex min-w-[10rem] items-center justify-center rounded-full bg-[#fff8fb] px-10 py-4 text-3xl font-black text-[#1c433a] shadow-[0_16px_28px_rgba(31,71,54,0.16)] transition-all duration-300 ease-out hover:scale-105 hover:bg-white hover:shadow-[0_22px_34px_rgba(31,71,54,0.22)] active:scale-[0.98] disabled:cursor-not-allowed disabled:scale-100 disabled:bg-white/70 disabled:text-[#55736b] disabled:shadow-none"
         >
-          {isSubmitting ? "Loading..." : "Login"}
+          {isSubmitting ? "Loading..." : config.submitLabel}
         </button>
+        <p className="mt-5 text-sm font-bold text-[#31474a]">
+          <Link
+            href={config.alternateHref}
+            className="text-[#2a4184] underline decoration-2 underline-offset-4 transition-colors hover:text-[#172b67]"
+          >
+            {config.alternateLabel}
+          </Link>
+        </p>
       </div>
     </form>
   );

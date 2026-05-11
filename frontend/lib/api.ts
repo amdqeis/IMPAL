@@ -252,6 +252,29 @@ export function persistAuth(auth: AuthResponse, remember: boolean) {
   target.setItem(USER_KEY, JSON.stringify(auth));
 }
 
+export function refreshStoredAuth(auth: AuthResponse) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const localToken = window.localStorage.getItem(TOKEN_KEY);
+  const sessionToken = window.sessionStorage.getItem(TOKEN_KEY);
+  const token = localToken ?? sessionToken ?? auth.access_token ?? auth.token;
+
+  if (!token) {
+    return;
+  }
+
+  persistAuth(
+    {
+      ...auth,
+      access_token: token,
+      token,
+    },
+    Boolean(localToken),
+  );
+}
+
 export function clearAuth() {
   if (typeof window === "undefined") {
     return;

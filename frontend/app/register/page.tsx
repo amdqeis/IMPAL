@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { AuthPageGuard } from "@/components/sibooking/AuthPageGuard";
+import { useToast } from "@/components/sibooking/ToastProvider";
 import { api, persistAuth } from "@/lib/api";
 
 const registerSchema = z
@@ -26,6 +28,7 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -37,18 +40,34 @@ export default function RegisterPage() {
 
   const onSubmit = async (values: RegisterValues) => {
     setError(null);
-    const auth = await api.auth.register({
-      nama: values.nama,
-      email: values.email,
-      no_hp: values.no_hp,
-      password: values.password,
-    });
-    persistAuth(auth, true);
-    router.push("/user/dashboard");
+
+    try {
+      const auth = await api.auth.register({
+        nama: values.nama,
+        email: values.email,
+        no_hp: values.no_hp,
+        password: values.password,
+      });
+
+      persistAuth(auth, true);
+      toast.success("Registrasi berhasil, diarahkan ke dashboard.");
+      router.push("/user/dashboard");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Registrasi gagal. Coba lagi.";
+      setError(message);
+      toast.error(message);
+    }
+  };
+
+  const handleInvalidSubmit = () => {
+    const message = "Periksa kembali data pendaftaran.";
+    setError(message);
+    toast.error(message);
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#8ed25c] text-[#183832]">
+    <AuthPageGuard>
+      <main className="relative min-h-screen overflow-hidden bg-[#8ed25c] text-[#183832]">
       <div className="absolute inset-0 bg-[linear-gradient(100deg,_#4eaabd_0%,_#66c59d_48%,_#94de5c_100%)]" />
       <div className="absolute inset-0 opacity-[0.08]">
         {Array.from({ length: 48 }).map((_, index) => (
@@ -66,7 +85,7 @@ export default function RegisterPage() {
         <h1 className="mb-7 text-center text-[70px] font-black leading-none text-[#173b34] drop-shadow-[0_8px_10px_rgba(16,52,45,0.18)] sm:text-[88px]">
           Daftar Akun
         </h1>
-        <form onSubmit={handleSubmit(onSubmit, () => setError("Periksa kembali data pendaftaran."))} className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit, handleInvalidSubmit)} className="space-y-3">
           {error ? <p className="rounded-lg bg-[#FEF2F2] px-4 py-3 text-sm font-bold text-[#B91C1C]">{error}</p> : null}
           <RegisterField label="Nama" error={errors.nama?.message} inputProps={register("nama")} />
           <RegisterField label="E-mail" type="email" error={errors.email?.message} inputProps={register("email")} />
@@ -85,7 +104,8 @@ export default function RegisterPage() {
           Sudah punya akun? Login
         </Link>
       </section>
-    </main>
+      </main>
+    </AuthPageGuard>
   );
 }
 
