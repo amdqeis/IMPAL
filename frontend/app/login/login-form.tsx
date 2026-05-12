@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useToast } from "@/components/sibooking/ToastProvider";
 import { ApiError, api, clearAuth, persistAuth } from "@/lib/api";
-import { isAllowedForLoginMode, type LoginMode } from "@/lib/auth";
+import { getDashboardPathForRoles, isAllowedForLoginMode, type LoginMode } from "@/lib/auth";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail tidak valid"),
@@ -86,7 +86,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
       persistAuth(auth, values.rememberMe);
       toast.success("Login berhasil, diarahkan ke dashboard.");
 
-      router.push(config.redirectTo);
+      router.push(mode === "admin" ? getDashboardPathForRoles(auth.roles) : config.redirectTo);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError("E-mail atau kata sandi salah.");

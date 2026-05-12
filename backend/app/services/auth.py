@@ -9,6 +9,7 @@ from app.core.security import create_access_token
 from app.models import User, UserRole
 from app.repositories import users as user_repo
 from app.schemas.auth import AuthResponse, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserRead, UserUpdate
+from app.services.permissions import get_default_permissions_for_roles
 
 
 def _role_names(user: User) -> list[str]:
@@ -16,7 +17,9 @@ def _role_names(user: User) -> list[str]:
 
 
 def _permission_names(user: User) -> list[str]:
-    return sorted({permission.nama_permission for role in user.roles for permission in role.permissions})
+    role_names = _role_names(user)
+    stored_permissions = {permission.nama_permission for role in user.roles for permission in role.permissions}
+    return sorted(stored_permissions | get_default_permissions_for_roles(role_names))
 
 
 def build_auth_response(

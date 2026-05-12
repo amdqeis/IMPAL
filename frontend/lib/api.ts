@@ -202,6 +202,7 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   query?: QueryParams;
   auth?: boolean;
 };
+type ApiCallOptions = Pick<RequestOptions, "signal">;
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -343,6 +344,40 @@ async function request<T>(
   return data as T;
 }
 
+async function requestBlob(
+  path: string,
+  { body, headers, query, auth = true, ...init }: RequestOptions = {},
+): Promise<Blob> {
+  const token = auth ? getStoredToken() : null;
+  const response = await fetch(buildUrl(path, query), {
+    ...init,
+    headers: {
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: init.cache ?? "no-store",
+  });
+
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") ?? "";
+    const data = contentType.includes("application/json")
+      ? await response.json()
+      : await response.text();
+    const message =
+      typeof data === "object" &&
+      data !== null &&
+      ("message" in data || "detail" in data)
+        ? String((data as { message?: string; detail?: string }).message ?? (data as { detail?: string }).detail)
+        : `Request gagal dengan status ${response.status}`;
+
+    throw new ApiError(message, response.status, data);
+  }
+
+  return response.blob();
+}
+
 export const api = {
   auth: {
     register: (payload: RegisterPayload) =>
@@ -358,7 +393,7 @@ export const api = {
         auth: false,
       }),
     me: () => request<AuthResponse>("/auth/me"),
-    listUsers: () => request<UserWithAccess[]>("/auth/users"),
+    listUsers: (options?: ApiCallOptions) => request<UserWithAccess[]>("/auth/users", { ...options }),
     updateUser: (userId: number, payload: UserUpdatePayload) =>
       request<UserWithAccess>(`/auth/users/${userId}`, {
         method: "PATCH",
@@ -426,8 +461,8 @@ export const api = {
       }),
   },
   reservasi: {
-    list: (query?: { id_user?: number; status_reservasi?: string }) =>
-      request<Reservasi[]>("/reservasi/", { query }),
+    list: (query?: { id_user?: number; id_cabang?: number; status_reservasi?: string }, options?: ApiCallOptions) =>
+      request<Reservasi[]>("/reservasi/", { query, ...options }),
     create: (payload: ReservasiCreatePayload) =>
       request<Reservasi>("/reservasi/", {
         method: "POST",
@@ -440,8 +475,8 @@ export const api = {
       }),
   },
   pembayaran: {
-    list: (query?: { id_reservasi?: number; status_pembayaran?: string }) =>
-      request<Pembayaran[]>("/pembayaran/", { query }),
+    list: (query?: { id_reservasi?: number; id_cabang?: number; status_pembayaran?: string }, options?: ApiCallOptions) =>
+      request<Pembayaran[]>("/pembayaran/", { query, ...options }),
     create: (payload: PembayaranCreatePayload) =>
       request<Pembayaran>("/pembayaran/", {
         method: "POST",
@@ -469,7 +504,7 @@ export const api = {
       }),
   },
   laporan: {
-    list: () => request<Laporan[]>("/laporan/"),
+    list: (options?: ApiCallOptions) => request<Laporan[]>("/laporan/", { ...options }),
     summary: () => request<AdminSummary>("/laporan/summary"),
     create: (payload: LaporanCreatePayload) =>
       request<Laporan>("/laporan/", {
@@ -481,6 +516,8 @@ export const api = {
         method: "PATCH",
         body: payload,
       }),
+    downloadPdf: (laporanId: number, options?: ApiCallOptions) =>
+      requestBlob(`/laporan/${laporanId}/pdf`, { ...options }),
   },
 };
 

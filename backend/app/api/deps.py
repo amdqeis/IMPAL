@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models import User
+from app.services.permissions import get_default_permissions_for_roles
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -86,7 +87,9 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def get_user_permissions(user: User) -> set[str]:
-    return {permission.nama_permission for role in user.roles for permission in role.permissions}
+    role_names = {role.nama_role for role in user.roles}
+    stored_permissions = {permission.nama_permission for role in user.roles for permission in role.permissions}
+    return stored_permissions | get_default_permissions_for_roles(role_names)
 
 
 def has_permission(user: User, permission: str) -> bool:

@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.reservasi import ReservasiRead
+
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -22,6 +24,7 @@ class PaymentRead(ORMModel):
     id_reservasi: int
     amount: Decimal
     status: str
+    reservasi: ReservasiRead | None = None
 
 
 class PaymentLogCreate(BaseModel):
