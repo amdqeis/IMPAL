@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Reservasi
+from app.models import Reservasi, Tempat
 
 ACTIVE_RESERVATION_STATUSES = ("pending", "confirmed")
 
@@ -12,11 +12,14 @@ def list_reservasi(
     db: Session,
     *,
     id_user: int | None = None,
+    id_cabang: int | None = None,
     status_reservasi: str | None = None,
 ) -> list[Reservasi]:
     query = select(Reservasi).order_by(Reservasi.id_reservasi.desc())
     if id_user is not None:
         query = query.where(Reservasi.id_user == id_user)
+    if id_cabang is not None:
+        query = query.join(Reservasi.tempat).where(Tempat.id_cabang == id_cabang)
     if status_reservasi is not None:
         query = query.where(Reservasi.status == status_reservasi)
     return list(db.scalars(query).all())

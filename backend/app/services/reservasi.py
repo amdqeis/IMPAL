@@ -19,12 +19,13 @@ def list_reservasi(
     *,
     current_user: User,
     id_user: int | None = None,
+    id_cabang: int | None = None,
     status_reservasi: str | None = None,
 ) -> list[Reservasi]:
     """Return reservations; regular users are scoped to their own data."""
     if not has_permission(current_user, MANAGE_RESERVATIONS):
         id_user = current_user.id_user
-    return repo.list_reservasi(db, id_user=id_user, status_reservasi=status_reservasi)
+    return repo.list_reservasi(db, id_user=id_user, id_cabang=id_cabang, status_reservasi=status_reservasi)
 
 
 def _assert_tanggal_not_past(tanggal: date) -> None:

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import Response
 from sqlalchemy import func, select
 
 from app.api.deps import DbSession, require_permissions
-from app.models import Payment, Reservasi
+from app.models import Payment, Reservasi, User
 from app.schemas import COMMON_ERROR_RESPONSES, DashboardSummaryRead, LaporanCreate, LaporanRead, LaporanUpdate
 from app.services import laporan as service
 from app.services.permissions import MANAGE_REPORTS, VIEW_REPORTS
@@ -65,10 +66,10 @@ def get_dashboard_summary(
 def create_laporan(
     payload: LaporanCreate,
     db: DbSession,
-    _current_user=Depends(require_permissions(MANAGE_REPORTS)),
+    current_user: User = Depends(require_permissions(MANAGE_REPORTS)),
 ):
     """Create a report."""
-    return service.create_laporan(db, payload)
+    return service.create_laporan(db, payload, dibuat_oleh=current_user.id_user)
 
 
 @router.patch(
@@ -86,3 +87,23 @@ def update_laporan(
 ):
     """Patch report metadata."""
     return service.update_laporan(db, laporan_id, payload)
+
+
+@router.get(
+    "/{laporan_id}/pdf",
+    summary="Download laporan PDF",
+    description="Menghasilkan PDF laporan dari data terbaru di database.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+def download_laporan_pdf(
+    laporan_id: int,
+    db: DbSession,
+    _current_user=Depends(require_permissions(VIEW_REPORTS, MANAGE_REPORTS)),
+) -> Response:
+    """Generate a PDF file for a report."""
+    pdf_bytes, filename = service.generate_laporan_pdf(db, laporan_id)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

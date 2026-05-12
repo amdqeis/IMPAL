@@ -29,10 +29,16 @@ def list_pembayaran(
     *,
     current_user: User,
     id_reservasi: int | None = None,
+    id_cabang: int | None = None,
     status_pembayaran: str | None = None,
 ) -> list[Payment]:
     """Return payments; regular users only see payments for their own reservations."""
-    payments = repo.list_pembayaran(db, id_reservasi=id_reservasi, status_pembayaran=status_pembayaran)
+    payments = repo.list_pembayaran(
+        db,
+        id_reservasi=id_reservasi,
+        id_cabang=id_cabang,
+        status_pembayaran=status_pembayaran,
+    )
     if has_permission(current_user, MANAGE_PAYMENTS):
         return payments
     return [payment for payment in payments if payment.reservasi.id_user == current_user.id_user]

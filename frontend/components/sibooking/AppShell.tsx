@@ -19,6 +19,7 @@ import {
   Check,
   ChevronDown,
   Clock3,
+  FileText,
   History,
   LayoutDashboard,
   LogOut,
@@ -32,9 +33,9 @@ import {
 } from "lucide-react";
 
 import { api, getStoredAuth, type AuthResponse, type Cabang } from "@/lib/api";
-import { hasPrivilegedRole } from "@/lib/auth";
+import { hasAdminRole, hasOwnerRole } from "@/lib/auth";
 
-type Role = "user" | "admin";
+type Role = "user" | "admin" | "owner";
 type MenuItem = {
   label: string;
   href: string;
@@ -53,6 +54,10 @@ const adminMenu: MenuItem[] = [
   { label: "Cashflow", href: "/admin/cashflow", icon: Banknote },
   { label: "Data Users", href: "/admin/users", icon: UsersRound },
   { label: "Schedule", href: "/admin/schedule", icon: Clock3 },
+];
+
+const ownerMenu: MenuItem[] = [
+  { label: "Reports", href: "/owner/reports", icon: FileText },
 ];
 
 type AppShellProps = {
@@ -92,7 +97,7 @@ export function AppShell({ role, children }: AppShellProps) {
   const [branchesLoading, setBranchesLoading] = useState(true);
   const [branchesError, setBranchesError] = useState<string | null>(null);
   const [auth] = useState<AuthResponse | null>(() => getStoredAuth());
-  const loginPath = role === "admin" ? "/admin/login" : "/login";
+  const loginPath = role === "user" ? "/login" : "/admin/login";
 
   useEffect(() => {
     const stored = getStoredAuth();
@@ -102,19 +107,32 @@ export function AppShell({ role, children }: AppShellProps) {
       return;
     }
 
-    const isPrivileged = hasPrivilegedRole(stored.roles);
-    if (role === "admin" && !isPrivileged) {
+    const isOwner = hasOwnerRole(stored.roles);
+    const isAdmin = hasAdminRole(stored.roles);
+
+    if (role === "owner" && !isOwner) {
+      router.replace(isAdmin ? "/admin/dashboard" : "/user/dashboard");
+      return;
+    }
+
+    if (role === "admin" && isOwner) {
+      router.replace("/owner/reports");
+      return;
+    }
+
+    if (role === "admin" && !isAdmin) {
       router.replace("/user/dashboard");
       return;
     }
-    if (role === "user" && isPrivileged) {
-      router.replace("/admin/dashboard");
+
+    if (role === "user" && (isOwner || isAdmin)) {
+      router.replace(isOwner ? "/owner/reports" : "/admin/dashboard");
     }
   }, [loginPath, role, router]);
 
-  const menu = role === "admin" ? adminMenu : userMenu;
-  const profileHref = role === "admin" ? "/admin/profile" : "/user/profile";
-  const displayName = auth?.user.nama ?? (role === "admin" ? "Andre Hungkul" : "Jonathan Doang");
+  const menu = role === "owner" ? ownerMenu : role === "admin" ? adminMenu : userMenu;
+  const profileHref = role === "owner" ? "/owner/profile" : role === "admin" ? "/admin/profile" : "/user/profile";
+  const displayName = auth?.user.nama ?? (role === "user" ? "Jonathan Doang" : "Andre Hungkul");
   const selectedBranch = useMemo(
     () => branches.find((branch) => branch.id_cabang === selectedBranchId) ?? null,
     [branches, selectedBranchId],
@@ -179,7 +197,7 @@ export function AppShell({ role, children }: AppShellProps) {
   const sidebarContent = useMemo(
     () => (
       <div className="flex h-full min-h-0 flex-col px-4 py-5">
-        <Link href={role === "admin" ? "/admin/dashboard" : "/user/dashboard"} className="flex items-center gap-2 md:justify-center lg:justify-start">
+        <Link href={role === "owner" ? "/owner/reports" : role === "admin" ? "/admin/dashboard" : "/user/dashboard"} className="flex items-center gap-2 md:justify-center lg:justify-start">
           <Image
             src="/Logo Sibooking.png"
             alt="SiBooking logo"

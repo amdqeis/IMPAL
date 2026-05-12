@@ -31,6 +31,7 @@ def list_pembayaran(
     db: DbSession,
     current_user: User = Depends(require_permissions(VIEW_PAYMENTS, MANAGE_PAYMENTS)),
     id_reservasi: int | None = None,
+    id_cabang: int | None = None,
     status_pembayaran: str | None = None,
 ):
     """Return payments scoped by permission."""
@@ -38,6 +39,7 @@ def list_pembayaran(
         db,
         current_user=current_user,
         id_reservasi=id_reservasi,
+        id_cabang=id_cabang,
         status_pembayaran=status_pembayaran,
     )
 

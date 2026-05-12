@@ -117,11 +117,11 @@ def seed_dummy_data() -> None:
         db.flush()
 
         permission_role_map = {
-            "manage_users": role_owner,
+            "manage_users": role_admin,
             "manage_roles": role_owner,
             "approve_refunds": role_owner,
             "manage_reports": role_owner,
-            "view_reports": role_admin,
+            "view_reports": role_owner,
             "manage_branches": role_admin,
             "manage_tables": role_admin,
             "manage_schedules": role_admin,
@@ -142,7 +142,7 @@ def seed_dummy_data() -> None:
         db.add_all(permissions)
 
         role_assignments = [
-            (0, [role_owner, role_admin, role_user]),
+            (0, [role_owner]),
             (1, [role_admin, role_user]),
             (2, [role_admin, role_user]),
             (3, [role_user]),

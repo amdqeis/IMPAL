@@ -4,12 +4,24 @@ export type LoginMode = "user" | "admin";
 
 export const privilegedRoles = new Set(["admin", "owner"]);
 
+export function hasOwnerRole(roles: RoleName[]) {
+  return roles.some((role) => role.toLowerCase() === "owner");
+}
+
+export function hasAdminRole(roles: RoleName[]) {
+  return roles.some((role) => role.toLowerCase() === "admin");
+}
+
 export function hasPrivilegedRole(roles: RoleName[]) {
   return roles.some((role) => privilegedRoles.has(role.toLowerCase()));
 }
 
 export function getDashboardPathForRoles(roles: RoleName[]) {
-  return hasPrivilegedRole(roles) ? "/admin/dashboard" : "/user/dashboard";
+  if (hasOwnerRole(roles)) {
+    return "/owner/reports";
+  }
+
+  return hasAdminRole(roles) ? "/admin/dashboard" : "/user/dashboard";
 }
 
 export function isAllowedForLoginMode(roles: RoleName[], mode: LoginMode) {

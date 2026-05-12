@@ -3,11 +3,11 @@
 import { AppShell } from "@/components/sibooking/AppShell";
 import { getStoredAuth } from "@/lib/api";
 
-export function ProfileView({ role }: { role: "user" | "admin" }) {
+export function ProfileView({ role }: { role: "user" | "admin" | "owner" }) {
   const auth = getStoredAuth();
-  const fallback = role === "admin"
-    ? { nama: "Andre Hungkul", email: "Andre@gmail.com", no_hp: "123456789" }
-    : { nama: "Jonathan Doang", email: "Jon@gmail.com", no_hp: "012345678" };
+  const fallback = role === "user"
+    ? { nama: "Jonathan Doang", email: "Jon@gmail.com", no_hp: "012345678" }
+    : { nama: "Andre Hungkul", email: "Andre@gmail.com", no_hp: "123456789" };
   const user = auth?.user ?? fallback;
 
   return (

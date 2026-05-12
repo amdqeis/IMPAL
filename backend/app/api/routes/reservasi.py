@@ -21,10 +21,17 @@ def list_reservasi(
     db: DbSession,
     current_user: User = Depends(require_permissions(VIEW_RESERVATIONS, MANAGE_RESERVATIONS)),
     id_user: int | None = None,
+    id_cabang: int | None = None,
     status_reservasi: str | None = None,
 ):
     """Return reservations scoped by permission."""
-    return service.list_reservasi(db, current_user=current_user, id_user=id_user, status_reservasi=status_reservasi)
+    return service.list_reservasi(
+        db,
+        current_user=current_user,
+        id_user=id_user,
+        id_cabang=id_cabang,
+        status_reservasi=status_reservasi,
+    )
 
 
 @router.post(

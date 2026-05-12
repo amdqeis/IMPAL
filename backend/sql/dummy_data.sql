@@ -32,7 +32,7 @@ INSERT INTO tempat (id_tempat, id_cabang, nomor_meja, harga, status) VALUES
     (10, 3, 'V01', 300000.00, 'available');
 
 INSERT INTO permissions (id_permission, id_role, nama_permission) VALUES
-    (1, 1, 'manage_users'),
+    (1, 2, 'manage_users'),
     (2, 1, 'manage_roles'),
     (3, 1, 'approve_refunds'),
     (4, 1, 'view_reports'),
@@ -52,8 +52,6 @@ INSERT INTO permissions (id_permission, id_role, nama_permission) VALUES
 
 INSERT INTO user_roles (id_user, id_role) VALUES
     (1, 1),
-    (1, 2),
-    (1, 3),
     (2, 2),
     (2, 3),
     (3, 3),

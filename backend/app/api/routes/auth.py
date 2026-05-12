@@ -1,13 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import CurrentUser, DbSession, has_permission, require_permissions
+from app.api.deps import CurrentUser, DbSession, require_permissions
+from app.models import User
 from app.repositories import users as user_repo
 from app.schemas import AuthResponse, COMMON_ERROR_RESPONSES, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserUpdate
 from app.services import auth as auth_service
-from app.services.permissions import MANAGE_ROLES, MANAGE_USERS
+from app.services.permissions import MANAGE_ROLES
 
 
 router = APIRouter(prefix="/auth", tags=["1. Autentikasi"])
+
+
+def _role_names(user: User) -> set[str]:
+    return {role.nama_role.lower() for role in user.roles}
+
+
+def _can_manage_users(user: User) -> bool:
+    roles = _role_names(user)
+    return "admin" in roles and "owner" not in roles
+
+
+def require_admin_user_manager(current_user: CurrentUser) -> User:
+    if _can_manage_users(current_user):
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Hanya admin yang dapat mengelola data user",
+    )
 
 
 @router.post(
@@ -68,7 +87,7 @@ def get_me(current_user: CurrentUser) -> AuthResponse:
 )
 def list_users(
     db: DbSession,
-    _current_user=Depends(require_permissions(MANAGE_USERS)),
+    _current_user=Depends(require_admin_user_manager),
 ) -> list[UserAccessRead]:
     """Return all users for admin management."""
     return auth_service.list_users(db)
@@ -83,7 +102,7 @@ def list_users(
 )
 def get_user_access(user_id: int, db: DbSession, current_user: CurrentUser) -> AuthResponse:
     """Return role and permission metadata for a user."""
-    if user_id != current_user.id_user and not has_permission(current_user, MANAGE_USERS):
+    if user_id != current_user.id_user and not _can_manage_users(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh melihat akses user lain")
     return auth_service.get_user_access(db, user_id)
 
@@ -102,7 +121,7 @@ def update_user(
     current_user: CurrentUser,
 ) -> UserAccessRead:
     """Patch user profile data."""
-    if user_id != current_user.id_user and not has_permission(current_user, MANAGE_USERS):
+    if user_id != current_user.id_user and not _can_manage_users(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh mengubah user lain")
     return auth_service.update_user(db, user_id, payload)
 
@@ -117,7 +136,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: DbSession,
-    _current_user=Depends(require_permissions(MANAGE_USERS)),
+    _current_user=Depends(require_admin_user_manager),
 ):
     """Delete a user."""
     auth_service.delete_user(db, user_id)
