@@ -143,18 +143,32 @@ function AdminBookingContent() {
       }
 
       const [reservationResult, paymentResult] = await Promise.all([
-        api.reservasi.list({ id_cabang: branchId }, { signal }),
-        api.pembayaran.list({ id_cabang: branchId }, { signal }),
+        api.reservasi.list(
+          {
+            id_cabang: branchId,
+            tanggal: filters.date || undefined,
+            search: debouncedSearchQuery || undefined,
+          },
+          { signal },
+        ),
+        api.pembayaran.list(
+          {
+            id_cabang: branchId,
+            status_pembayaran: filters.paymentStatus === "all" ? undefined : filters.paymentStatus,
+            search: debouncedSearchQuery || undefined,
+          },
+          { signal },
+        ),
       ]);
 
       return { reservations: reservationResult, payments: paymentResult };
     },
-    [branchId],
+    [branchId, debouncedSearchQuery, filters.date, filters.paymentStatus],
   );
   const branchBookings = useBranchResourceCache<BranchBookingData>({
     resource: "admin-bookings",
     branchId,
-    cacheParts: ["raw"],
+    cacheParts: ["raw", filters.date, filters.paymentStatus, debouncedSearchQuery],
     enabled: Boolean(branchId),
     fetcher: fetchBranchBookings,
   });
@@ -916,7 +930,6 @@ function buildPaymentStatusOptions(rows: BookingRow[]): SelectOption[] {
 function filterRows(rows: BookingRow[], searchQuery: string, filters: FilterState) {
   const keyword = searchQuery.trim().toLowerCase();
 
-  // TODO: Move search, date, room filters, and pagination to backend when the reservasi endpoint supports them.
   return rows.filter((row) => {
     const matchesSearch = !keyword || row.searchText.includes(keyword);
     const matchesDate = !filters.date || row.dateIso === filters.date;

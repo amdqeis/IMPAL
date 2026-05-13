@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 
 import { useToast } from "@/components/sibooking/ToastProvider";
 import { ApiError, api, clearAuth, persistAuth } from "@/lib/api";
@@ -54,6 +55,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
   const toast = useToast();
   const config = loginConfig[mode];
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -137,14 +139,29 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         >
           Kata Sandi
         </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="Masukkan kata sandi"
-          {...register("password")}
-          className="h-18 w-full rounded-full border border-white/70 bg-[#fffafb] px-8 text-lg font-medium text-[#26463f] shadow-[0_12px_28px_rgba(31,71,54,0.12)] outline-none transition-all duration-300 placeholder:text-[#8a9692] focus:border-[#57a784] focus:shadow-[0_0_0_4px_rgba(88,176,134,0.18),0_12px_28px_rgba(31,71,54,0.12)]"
-        />
+        <div className="relative">
+          <input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="Masukkan kata sandi"
+            {...register("password")}
+            className="h-18 w-full rounded-full border border-white/70 bg-[#fffafb] pl-8 pr-20 text-lg font-medium text-[#26463f] shadow-[0_12px_28px_rgba(31,71,54,0.12)] outline-none transition-all duration-300 placeholder:text-[#8a9692] focus:border-[#57a784] focus:shadow-[0_0_0_4px_rgba(88,176,134,0.18),0_12px_28px_rgba(31,71,54,0.12)]"
+          />
+          <button
+            type="button"
+            aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((current) => !current)}
+            className="absolute right-5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-[#55736b] transition-colors duration-300 hover:bg-[#e8f4ee] hover:text-[#173d35] focus:outline-none focus:ring-4 focus:ring-[rgba(88,176,134,0.18)]"
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5 stroke-[2.5]" aria-hidden="true" />
+            ) : (
+              <Eye className="h-5 w-5 stroke-[2.5]" aria-hidden="true" />
+            )}
+          </button>
+        </div>
         <FieldError message={errors.password?.message} />
       </div>
 

@@ -101,14 +101,23 @@ function AdminCashflowContent() {
   const fetchBranchPayments = useCallback(
     (signal: AbortSignal) =>
       branchId
-        ? api.pembayaran.list({ id_cabang: branchId, status_pembayaran: statusQuery }, { signal })
+        ? api.pembayaran.list(
+            {
+              id_cabang: branchId,
+              status_pembayaran: statusQuery,
+              start_date: filters.fromDate || undefined,
+              end_date: filters.toDate || undefined,
+              search: debouncedSearchQuery || undefined,
+            },
+            { signal },
+          )
         : Promise.resolve([]),
-    [branchId, statusQuery],
+    [branchId, debouncedSearchQuery, filters.fromDate, filters.toDate, statusQuery],
   );
   const branchPayments = useBranchResourceCache<Pembayaran[]>({
     resource: "admin-cashflow",
     branchId,
-    cacheParts: ["status", statusQuery ?? "all"],
+    cacheParts: ["status", statusQuery ?? "all", filters.fromDate, filters.toDate, debouncedSearchQuery],
     enabled: Boolean(branchId),
     fetcher: fetchBranchPayments,
   });
@@ -491,7 +500,6 @@ function toTransactionRows(payments: Pembayaran[]): TransactionRow[] {
 function filterRows(rows: TransactionRow[], filters: FilterState, searchQuery: string) {
   const keyword = searchQuery.trim().toLowerCase();
 
-  // TODO: Move date/search pagination to backend when pembayaran endpoint supports them.
   return rows.filter((row) => {
     const matchesSearch = !keyword || row.searchText.includes(keyword);
     const matchesFrom = !filters.fromDate || (row.dateIso && row.dateIso >= filters.fromDate);

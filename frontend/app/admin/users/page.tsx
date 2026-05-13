@@ -114,7 +114,13 @@ function AdminUsersContent() {
       setError(null);
 
       try {
-        const result = await api.auth.listUsers({ signal });
+        const result = await api.auth.listUsers({
+          signal,
+          query: {
+            search: debouncedSearchQuery || undefined,
+            role: roleFilter === "all" ? undefined : roleFilter,
+          },
+        });
         if (!signal?.aborted) {
           setUsers(result);
         }
@@ -133,7 +139,7 @@ function AdminUsersContent() {
         }
       }
     },
-    [handleApiError, toast],
+    [debouncedSearchQuery, handleApiError, roleFilter, toast],
   );
 
   useEffect(() => {

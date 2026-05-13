@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
@@ -8,8 +8,8 @@ import { ArrowRight } from "lucide-react";
 
 import { AppShell, useSelectedBranch } from "@/components/sibooking/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/States";
-import { api, type Pembayaran, type Reservasi } from "@/lib/api";
-import { fallbackPayments, fallbackReservations } from "@/lib/fallback-data";
+import { api, type AdminSummary, type Reservasi } from "@/lib/api";
+import { fallbackReservations } from "@/lib/fallback-data";
 import {
   formatCurrency,
   formatDate,
@@ -81,15 +81,48 @@ export default function AdminDashboardPage() {
 function AdminDashboardContent() {
   const { selectedBranch, branchesLoading, branchesError } = useSelectedBranch();
   const reservations = useApiData<Reservasi[]>(
-    () => api.reservasi.list(),
+    () => api.reservasi.list({ status_reservasi: "pending", start_date: getJakartaDateIso(), sort_by: "tanggal", sort_order: "asc", limit: 100 }),
     fallbackReservations,
   );
-  const payments = useApiData<Pembayaran[]>(
-    () => api.pembayaran.list(),
-    fallbackPayments,
-  );
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedBranch) {
+      setSummary(null);
+      setSummaryLoading(false);
+      setSummaryError(null);
+      return;
+    }
+
+    setSummaryLoading(true);
+    setSummaryError(null);
+    api.laporan
+      .summary({ id_cabang: selectedBranch.id_cabang })
+      .then((result) => {
+        if (active) {
+          setSummary(result);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setSummaryError(err instanceof Error ? err.message : "Gagal memuat ringkasan dashboard");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setSummaryLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedBranch]);
 
   const branchReservations = useMemo(() => {
     if (!selectedBranch) {
@@ -100,14 +133,6 @@ function AdminDashboardContent() {
       (reservation) => reservation.tempat?.id_cabang === selectedBranch.id_cabang,
     );
   }, [reservations.data, selectedBranch]);
-  const branchReservationIds = useMemo(
-    () => new Set(branchReservations.map((reservation) => reservation.id_reservasi)),
-    [branchReservations],
-  );
-  const branchPayments = useMemo(
-    () => payments.data.filter((payment) => branchReservationIds.has(payment.id_reservasi)),
-    [payments.data, branchReservationIds],
-  );
   const upcomingBookings = useMemo(
     () => toDashboardBookings(branchReservations, getJakartaDateIso()),
     [branchReservations],
@@ -115,10 +140,12 @@ function AdminDashboardContent() {
   const bookings = upcomingBookings.slice(0, 6);
   const nearestBooking = upcomingBookings[0] ?? null;
   const actionableCount = upcomingBookings.length;
-  const branchStats = useMemo(
-    () => calculateBranchStats(branchReservations, branchPayments),
-    [branchReservations, branchPayments],
-  );
+  const fallbackBranchStats = useMemo(() => calculateBranchStats(branchReservations), [branchReservations]);
+  const branchStats = {
+    active: summary?.active_bookings ?? fallbackBranchStats.active,
+    paid: summary?.paid_payments ?? fallbackBranchStats.paid,
+    cancelled: fallbackBranchStats.cancelled,
+  };
 
   const updateBooking = async (booking: DashboardBooking, status: string) => {
     setBusyId(booking.id);
@@ -173,9 +200,9 @@ function AdminDashboardContent() {
             <ErrorState message={reservations.error} />
           </div>
         ) : null}
-        {payments.error ? (
+        {summaryError ? (
           <div className="mt-4">
-            <ErrorState message={payments.error} />
+            <ErrorState message={summaryError} />
           </div>
         ) : null}
 
@@ -197,7 +224,7 @@ function AdminDashboardContent() {
               Menampilkan data cabang {selectedBranch.nama}
             </p>
 
-            {payments.loading ? (
+            {summaryLoading ? (
               <div className="mt-4">
                 <LoadingState label="Memuat statistik pembayaran..." />
               </div>
@@ -622,15 +649,12 @@ function toDashboardBookings(
     });
 }
 
-function calculateBranchStats(
-  reservations: Reservasi[],
-  payments: Pembayaran[],
-): BranchStats {
+function calculateBranchStats(reservations: Reservasi[]): BranchStats {
   return {
     active: reservations.filter((reservation) =>
       ["pending", "confirmed"].includes(normalizeStatus(reservation.status)),
     ).length,
-    paid: payments.filter((payment) => normalizeStatus(payment.status) === "paid").length,
+    paid: 0,
     cancelled: reservations.filter((reservation) =>
       ["cancelled", "declined", "batal"].includes(normalizeStatus(reservation.status)),
     ).length,

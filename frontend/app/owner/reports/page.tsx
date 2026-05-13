@@ -97,7 +97,13 @@ function OwnerReportsContent() {
       setError(null);
 
       try {
-        const result = await api.laporan.list({ signal });
+        const result = await api.laporan.list({
+          signal,
+          query: {
+            search: debouncedSearchQuery || undefined,
+            tipe: typeFilter === "all" ? undefined : typeFilter,
+          },
+        });
         if (!signal?.aborted) {
           setReports(result);
         }
@@ -116,7 +122,7 @@ function OwnerReportsContent() {
         }
       }
     },
-    [handleApiError, toast],
+    [debouncedSearchQuery, handleApiError, toast, typeFilter],
   );
 
   useEffect(() => {
