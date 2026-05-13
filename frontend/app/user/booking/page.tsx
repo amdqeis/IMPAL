@@ -4,18 +4,17 @@ import Image from "next/image";
 
 import { AppShell } from "@/components/sibooking/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/States";
-import { api, getStoredAuth, type Pembayaran, type Reservasi } from "@/lib/api";
-import { fallbackPayments, fallbackReservations } from "@/lib/fallback-data";
+import { api, getStoredAuth, type Reservasi } from "@/lib/api";
+import { fallbackReservations } from "@/lib/fallback-data";
 import { formatDate, normalizeTime, roomLabel, roomTypeFromPrice } from "@/lib/format";
 import { useApiData } from "@/lib/use-api-data";
 
 export default function UserBookingPage() {
   const auth = getStoredAuth();
   const reservations = useApiData<Reservasi[]>(
-    () => api.reservasi.list(auth?.user.id_user ? { id_user: auth.user.id_user } : undefined),
+    () => api.reservasi.list(auth?.user.id_user ? { id_user: auth.user.id_user, limit: 50 } : { limit: 50 }),
     fallbackReservations,
   );
-  const payments = useApiData<Pembayaran[]>(() => api.pembayaran.list(), fallbackPayments);
 
   const activeReservations = reservations.data.filter((reservation) =>
     ["pending", "confirmed"].includes(reservation.status.toLowerCase()),
@@ -29,10 +28,13 @@ export default function UserBookingPage() {
         {reservations.loading ? <LoadingState /> : null}
         {!reservations.loading && activeReservations.length === 0 ? <EmptyState message="Belum ada booking aktif." /> : null}
         <section className="grid max-w-[900px] grid-cols-1 gap-6 md:grid-cols-2">
-          {activeReservations.map((booking) => {
-            const payment = payments.data.find((item) => item.id_reservasi === booking.id_reservasi);
-            return <UserBookingCard key={booking.id_reservasi} booking={booking} status={payment?.status === "paid" ? "PAID" : "UNPAID"} />;
-          })}
+          {activeReservations.map((booking) => (
+            <UserBookingCard
+              key={booking.id_reservasi}
+              booking={booking}
+              status={booking.latest_payment_status === "paid" ? "PAID" : "UNPAID"}
+            />
+          ))}
         </section>
       </div>
     </AppShell>

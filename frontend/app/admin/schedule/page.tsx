@@ -69,6 +69,7 @@ function AdminScheduleContent() {
   const [dateRange, setDateRange] = useState<DateRange>(() => getCurrentMonthRange());
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
 
   const branchId = selectedBranch?.id_cabang ?? null;
   const fetchBranchReservations = useCallback(
@@ -88,17 +89,17 @@ function AdminScheduleContent() {
           start_date: dateRange.from,
           end_date: dateRange.to,
           status_reservasi: statusQuery,
-          search: searchQuery || undefined,
+          search: debouncedSearchQuery || undefined,
         },
         { signal },
       );
     },
-    [branchId, dateRange.from, dateRange.to, searchQuery, statusFilter],
+    [branchId, dateRange.from, dateRange.to, debouncedSearchQuery, statusFilter],
   );
   const branchReservations = useBranchResourceCache<Reservasi[]>({
     resource: "admin-schedule",
     branchId,
-    cacheParts: ["reservations", dateRange.from, dateRange.to, statusFilter, searchQuery],
+    cacheParts: ["reservations", dateRange.from, dateRange.to, statusFilter, debouncedSearchQuery],
     enabled: Boolean(branchId),
     fetcher: fetchBranchReservations,
   });
@@ -626,4 +627,18 @@ function bookingChipClass(status: string) {
   }
 
   return "border-[#CFE8DA] bg-[#EFFAF3] text-[#21684E]";
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value), delayMs);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [delayMs, value]);
+
+  return debouncedValue;
 }

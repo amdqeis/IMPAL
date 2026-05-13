@@ -37,14 +37,19 @@ export default function UserPaymentPage() {
 function UserPaymentContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const requestedTableId = Number(params.get("id_tempat") ?? fallbackTables[1].id_tempat);
+  const requestedScheduleId = Number(params.get("id_jadwal") ?? fallbackSchedules.find((item) => item.id_tempat === requestedTableId)?.id_jadwal ?? fallbackSchedules[1].id_jadwal);
   const tables = useApiData<Tempat[]>(() => api.masterData.listTempat(), fallbackTables);
-  const schedules = useApiData<Jadwal[]>(() => api.jadwal.listTersedia(), fallbackSchedules);
+  const schedules = useApiData<Jadwal[]>(
+    () => api.jadwal.listTersedia(params.get("id_tempat") ? { id_tempat: requestedTableId } : undefined),
+    fallbackSchedules,
+  );
   const [error, setError] = useState<string | null>(null);
   const [reservation, setReservation] = useState<Reservasi | null>(null);
   const [payment, setPayment] = useState<Pembayaran | null>(null);
 
-  const defaultTableId = Number(params.get("id_tempat") ?? fallbackTables[1].id_tempat);
-  const defaultScheduleId = Number(params.get("id_jadwal") ?? fallbackSchedules.find((item) => item.id_tempat === defaultTableId)?.id_jadwal ?? fallbackSchedules[1].id_jadwal);
+  const defaultTableId = requestedTableId;
+  const defaultScheduleId = requestedScheduleId;
   const auth = getStoredAuth();
 
   const form = useForm<BookingValues>({

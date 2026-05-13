@@ -27,6 +27,7 @@ import {
   clearAuth,
   getStoredAuth,
   type AuthResponse,
+  type PaginationMeta,
   type RegisterPayload,
   type UserUpdatePayload,
   type UserWithAccess,
@@ -43,6 +44,14 @@ type UserFormState = {
 
 const ITEMS_PER_PAGE = 6;
 const EMPTY_USERS: UserWithAccess[] = [];
+const EMPTY_PAGINATION: PaginationMeta = {
+  page: 1,
+  limit: ITEMS_PER_PAGE,
+  total_items: 0,
+  total_pages: 0,
+  has_next: false,
+  has_prev: false,
+};
 const initialFormState: UserFormState = {
   nama: "",
   email: "",
@@ -62,6 +71,7 @@ function AdminUsersContent() {
   const router = useRouter();
   const toast = useToast();
   const [users, setUsers] = useState<UserWithAccess[]>(EMPTY_USERS);
+  const [pagination, setPagination] = useState<PaginationMeta>(EMPTY_PAGINATION);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,15 +124,18 @@ function AdminUsersContent() {
       setError(null);
 
       try {
-        const result = await api.auth.listUsers({
+        const result = await api.auth.listUsersPaginated({
           signal,
           query: {
+            page,
+            limit: ITEMS_PER_PAGE,
             search: debouncedSearchQuery || undefined,
             role: roleFilter === "all" ? undefined : roleFilter,
           },
         });
         if (!signal?.aborted) {
-          setUsers(result);
+          setUsers(result.data);
+          setPagination(result.pagination);
         }
       } catch (err) {
         if (signal?.aborted) {
@@ -139,7 +152,7 @@ function AdminUsersContent() {
         }
       }
     },
-    [debouncedSearchQuery, handleApiError, roleFilter, toast],
+    [debouncedSearchQuery, handleApiError, page, roleFilter, toast],
   );
 
   useEffect(() => {
@@ -153,20 +166,36 @@ function AdminUsersContent() {
 
   const roleOptions = useMemo(() => buildRoleOptions(users), [users]);
   const filteredUsers = useMemo(
-    () => filterUsers(users, debouncedSearchQuery, roleFilter, statusFilter),
-    [debouncedSearchQuery, roleFilter, statusFilter, users],
+    () => filterUsers(users, "", "all", statusFilter),
+    [statusFilter, users],
   );
-  const activeUsers = users.filter((user) => normalizeStatus(user.status) === "active").length;
+  const canUseBackendPagination = statusFilter !== "inactive";
+  const totalItems = canUseBackendPagination ? pagination.total_items : filteredUsers.length;
+  const activeUsers = canUseBackendPagination
+    ? totalItems
+    : users.filter((user) => normalizeStatus(user.status) === "active").length;
   const adminUsers = users.filter((user) => user.roles.some((role) => normalizeRole(role) === "admin")).length;
   const regularUsers = users.filter((user) => user.roles.some((role) => normalizeRole(role) === "user")).length;
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    canUseBackendPagination ? pagination.total_pages || 1 : Math.ceil(filteredUsers.length / ITEMS_PER_PAGE),
+  );
   const currentPage = Math.min(page, totalPages);
   const paginatedUsers = useMemo(() => {
+    if (canUseBackendPagination) {
+      return filteredUsers;
+    }
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
-  }, [currentPage, filteredUsers]);
-  const showingStart = filteredUsers.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const showingEnd = Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length);
+  }, [canUseBackendPagination, currentPage, filteredUsers]);
+  const showingStart = totalItems === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const showingEnd = totalItems === 0 ? 0 : Math.min(showingStart + paginatedUsers.length - 1, totalItems);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const updateSearchQuery = (value: string) => {
     setSearchQuery(value);
@@ -335,7 +364,7 @@ function AdminUsersContent() {
                 </span>
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[12px] font-black text-[#21684E]">
-                <SummaryBadge label="Total" value={users.length} />
+                <SummaryBadge label="Total" value={totalItems} />
                 <SummaryBadge label="Admin" value={adminUsers} />
                 <SummaryBadge label="User" value={regularUsers} />
               </div>
@@ -520,7 +549,7 @@ function AdminUsersContent() {
           {!loading && filteredUsers.length > 0 ? (
             <div className="mt-5 flex flex-col gap-4 px-1 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[16px] font-bold text-[#6B8D70] sm:text-[20px]">
-                Showing {showingStart} to {showingEnd} of {filteredUsers.length} users
+                Showing {showingStart} to {showingEnd} of {totalItems} users
               </p>
               {totalPages > 1 ? (
                 <Pagination
@@ -888,7 +917,7 @@ function filterUsers(users: UserWithAccess[], keyword: string, roleFilter: strin
 }
 
 function buildRoleOptions(users: UserWithAccess[]) {
-  const roles = new Set<string>();
+  const roles = new Set<string>(["admin", "owner", "user"]);
 
   for (const user of users) {
     for (const role of user.roles) {

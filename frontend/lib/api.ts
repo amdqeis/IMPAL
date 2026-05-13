@@ -111,6 +111,8 @@ export type Reservasi = {
   tanggal: string;
   status: string;
   total_harga: string;
+  latest_payment_id?: number | null;
+  latest_payment_status?: string | null;
   user?: User | null;
   tempat?: Tempat | null;
   jadwal?: Jadwal | null;
@@ -378,11 +380,19 @@ async function requestPaginatedData<T>(
   options: RequestOptions = {},
   defaultLimit = 100,
 ): Promise<T[]> {
-  const response = await request<PaginatedResponse<T>>(path, {
+  const response = await requestPaginatedResponse<T>(path, options, defaultLimit);
+  return response.data;
+}
+
+async function requestPaginatedResponse<T>(
+  path: string,
+  options: RequestOptions = {},
+  defaultLimit = 100,
+): Promise<PaginatedResponse<T>> {
+  return request<PaginatedResponse<T>>(path, {
     ...options,
     query: withDefaultListLimit(options.query, defaultLimit),
   });
-  return response.data;
 }
 
 async function requestBlob(
@@ -436,6 +446,8 @@ export const api = {
     me: () => request<AuthResponse>("/auth/me"),
     listUsers: (options?: ApiCallOptions & { query?: PaginationQuery & { role?: string } }) =>
       requestPaginatedData<UserWithAccess>("/auth/users", { ...options, query: options?.query }),
+    listUsersPaginated: (options?: ApiCallOptions & { query?: PaginationQuery & { role?: string } }) =>
+      requestPaginatedResponse<UserWithAccess>("/auth/users", { ...options, query: options?.query }),
     updateUser: (userId: number, payload: UserUpdatePayload) =>
       request<UserWithAccess>(`/auth/users/${userId}`, {
         method: "PATCH",
@@ -450,8 +462,10 @@ export const api = {
     logout: clearAuth,
   },
   masterData: {
-    listCabang: (query?: PaginationQuery) =>
-      requestPaginatedData<Cabang>("/master-data/cabang", { query }),
+    listCabang: (query?: PaginationQuery, options?: ApiCallOptions) =>
+      requestPaginatedData<Cabang>("/master-data/cabang", { query, ...options }),
+    listCabangPaginated: (query?: PaginationQuery, options?: ApiCallOptions) =>
+      requestPaginatedResponse<Cabang>("/master-data/cabang", { query, ...options }),
     createCabang: (payload: CabangCreatePayload) =>
       request<Cabang>("/master-data/cabang", {
         method: "POST",
@@ -466,8 +480,10 @@ export const api = {
       request<void>(`/master-data/cabang/${cabangId}`, {
         method: "DELETE",
       }),
-    listTempat: (query?: PaginationQuery & { id_cabang?: number; status_tempat?: string }) =>
-      requestPaginatedData<Tempat>("/master-data/tempat", { query }),
+    listTempat: (query?: PaginationQuery & { id_cabang?: number; status_tempat?: string }, options?: ApiCallOptions) =>
+      requestPaginatedData<Tempat>("/master-data/tempat", { query, ...options }),
+    listTempatPaginated: (query?: PaginationQuery & { id_cabang?: number; status_tempat?: string }, options?: ApiCallOptions) =>
+      requestPaginatedResponse<Tempat>("/master-data/tempat", { query, ...options }),
     createTempat: (payload: TempatCreatePayload) =>
       request<Tempat>("/master-data/tempat", {
         method: "POST",
@@ -484,12 +500,18 @@ export const api = {
       }),
   },
   jadwal: {
-    list: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }) =>
-      requestPaginatedData<Jadwal>("/jadwal/", { query }),
+    list: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }, options?: ApiCallOptions) =>
+      requestPaginatedData<Jadwal>("/jadwal/", { query, ...options }),
+    listPaginated: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }, options?: ApiCallOptions) =>
+      requestPaginatedResponse<Jadwal>("/jadwal/", { query, ...options }),
     listAvailability: (query: PaginationQuery & { id_tempat: number; tanggal: string }) =>
       requestPaginatedData<Jadwal>("/jadwal/availability", { query }),
+    listAvailabilityPaginated: (query: PaginationQuery & { id_tempat: number; tanggal: string }) =>
+      requestPaginatedResponse<Jadwal>("/jadwal/availability", { query }),
     listTersedia: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }) =>
       requestPaginatedData<Jadwal>("/jadwal/tersedia", { query }),
+    listTersediaPaginated: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }) =>
+      requestPaginatedResponse<Jadwal>("/jadwal/tersedia", { query }),
     create: (payload: JadwalCreatePayload) =>
       request<Jadwal>("/jadwal/", {
         method: "POST",
@@ -519,6 +541,19 @@ export const api = {
       },
       options?: ApiCallOptions,
     ) => requestPaginatedData<Reservasi>("/reservasi/", { query, ...options }),
+    listPaginated: (
+      query?: PaginationQuery & {
+        id_user?: number;
+        id_cabang?: number;
+        id_tempat?: number;
+        id_jadwal?: number;
+        status_reservasi?: string;
+        tanggal?: string;
+        start_date?: string;
+        end_date?: string;
+      },
+      options?: ApiCallOptions,
+    ) => requestPaginatedResponse<Reservasi>("/reservasi/", { query, ...options }),
     create: (payload: ReservasiCreatePayload) =>
       request<Reservasi>("/reservasi/", {
         method: "POST",
@@ -541,6 +576,16 @@ export const api = {
       },
       options?: ApiCallOptions,
     ) => requestPaginatedData<Pembayaran>("/pembayaran/", { query, ...options }),
+    listPaginated: (
+      query?: PaginationQuery & {
+        id_reservasi?: number;
+        id_cabang?: number;
+        status_pembayaran?: string;
+        start_date?: string;
+        end_date?: string;
+      },
+      options?: ApiCallOptions,
+    ) => requestPaginatedResponse<Pembayaran>("/pembayaran/", { query, ...options }),
     create: (payload: PembayaranCreatePayload) =>
       request<Pembayaran>("/pembayaran/", {
         method: "POST",
@@ -570,6 +615,8 @@ export const api = {
   laporan: {
     list: (options?: ApiCallOptions & { query?: PaginationQuery & { tipe?: string; dibuat_oleh?: number } }) =>
       requestPaginatedData<Laporan>("/laporan/", { ...options, query: options?.query }),
+    listPaginated: (options?: ApiCallOptions & { query?: PaginationQuery & { tipe?: string; dibuat_oleh?: number } }) =>
+      requestPaginatedResponse<Laporan>("/laporan/", { ...options, query: options?.query }),
     summary: (query?: { id_cabang?: number; start_date?: string; end_date?: string }) =>
       request<AdminSummary>("/laporan/summary", { query }),
     create: (payload: LaporanCreatePayload) =>

@@ -12,6 +12,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   Banknote,
@@ -52,6 +53,7 @@ const adminMenu: MenuItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Booking", href: "/admin/booking", icon: CalendarDays },
   { label: "Cashflow", href: "/admin/cashflow", icon: Banknote },
+  { label: "Master Data", href: "/admin/cabang-tempat-jadwal", icon: MapPin },
   { label: "Data Users", href: "/admin/users", icon: UsersRound },
   { label: "Schedule", href: "/admin/schedule", icon: Clock3 },
 ];
@@ -63,6 +65,7 @@ const ownerMenu: MenuItem[] = [
 type AppShellProps = {
   role: Role;
   children: ReactNode;
+  showBranchSelector?: boolean;
 };
 
 type SelectedBranchContextValue = {
@@ -74,7 +77,13 @@ type SelectedBranchContextValue = {
 };
 
 const SELECTED_BRANCH_KEY = "sibooking_selected_branch_id";
+const STORED_AUTH_KEY = "sibooking_user";
+const BRANCH_CACHE_TTL_MS = 30_000;
 const SelectedBranchContext = createContext<SelectedBranchContextValue | null>(null);
+let cachedAuthRaw: string | null | undefined;
+let cachedAuth: AuthResponse | null = null;
+let branchListCache: { data: Cabang[]; updatedAt: number } | null = null;
+let branchListRequest: Promise<Cabang[]> | null = null;
 
 export function useSelectedBranch() {
   const context = useContext(SelectedBranchContext);
@@ -86,7 +95,7 @@ export function useSelectedBranch() {
   return context;
 }
 
-export function AppShell({ role, children }: AppShellProps) {
+export function AppShell({ role, children, showBranchSelector = true }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -94,10 +103,11 @@ export function AppShell({ role, children }: AppShellProps) {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(() =>
     readStoredBranchId(),
   );
-  const [branchesLoading, setBranchesLoading] = useState(true);
+  const [branchesLoading, setBranchesLoading] = useState(() => role === "admin" && showBranchSelector);
   const [branchesError, setBranchesError] = useState<string | null>(null);
-  const [auth] = useState<AuthResponse | null>(() => getStoredAuth());
+  const auth = useSyncExternalStore(subscribeStoredAuth, getStoredAuthSnapshot, getServerAuthSnapshot);
   const loginPath = role === "user" ? "/login" : "/admin/login";
+  const shouldLoadBranches = role === "admin" && showBranchSelector;
 
   useEffect(() => {
     const stored = getStoredAuth();
@@ -153,34 +163,84 @@ export function AppShell({ role, children }: AppShellProps) {
   );
 
   useEffect(() => {
-    let active = true;
+    if (!shouldLoadBranches) {
+      return;
+    }
 
-    api.masterData
-      .listCabang()
+    let active = true;
+    const cachedBranches = branchListCache;
+    const applyBranches = (result: Cabang[]) => {
+      setBranches(result);
+      setBranchesError(null);
+      setSelectedBranchId((current) => {
+        if (current !== null && result.some((branch) => branch.id_cabang === current)) {
+          return current;
+        }
+
+        const fallbackId = result[0]?.id_cabang ?? null;
+        storeBranchId(fallbackId);
+        return fallbackId;
+      });
+    };
+
+    if (cachedBranches) {
+      Promise.resolve().then(() => {
+        if (!active) {
+          return;
+        }
+
+        applyBranches(cachedBranches.data);
+        setBranchesLoading(false);
+      });
+
+      if (Date.now() - cachedBranches.updatedAt < BRANCH_CACHE_TTL_MS) {
+        return () => {
+          active = false;
+        };
+      }
+    } else {
+      Promise.resolve().then(() => {
+        if (!active) {
+          return;
+        }
+
+        setBranchesLoading(true);
+        setBranchesError(null);
+      });
+    }
+
+    if (!branchListRequest) {
+      branchListRequest = api.masterData
+        .listCabang()
+        .then((result) => {
+          branchListCache = { data: result, updatedAt: Date.now() };
+          return result;
+        })
+        .finally(() => {
+          branchListRequest = null;
+        });
+    }
+
+    const branchRequest = branchListRequest;
+
+    branchRequest
       .then((result) => {
         if (!active) {
           return;
         }
 
-        setBranches(result);
-        setSelectedBranchId((current) => {
-          if (current !== null && result.some((branch) => branch.id_cabang === current)) {
-            return current;
-          }
-
-          const fallbackId = result[0]?.id_cabang ?? null;
-          storeBranchId(fallbackId);
-          return fallbackId;
-        });
+        applyBranches(result);
       })
       .catch((err) => {
         if (!active) {
           return;
         }
 
-        setBranches([]);
-        setSelectedBranchId(null);
-        storeBranchId(null);
+        if (!cachedBranches) {
+          setBranches([]);
+          setSelectedBranchId(null);
+          storeBranchId(null);
+        }
         setBranchesError(err instanceof Error ? err.message : "Gagal memuat cabang");
       })
       .finally(() => {
@@ -192,7 +252,7 @@ export function AppShell({ role, children }: AppShellProps) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [shouldLoadBranches]);
 
   const sidebarContent = useMemo(
     () => (
@@ -211,13 +271,15 @@ export function AppShell({ role, children }: AppShellProps) {
           </span>
         </Link>
 
-        <BranchDropdown
-          branches={branches}
-          selectedBranch={selectedBranch}
-          branchesLoading={branchesLoading}
-          branchesError={branchesError}
-          onSelect={selectBranch}
-        />
+        {shouldLoadBranches ? (
+          <BranchDropdown
+            branches={branches}
+            selectedBranch={selectedBranch}
+            branchesLoading={branchesLoading}
+            branchesError={branchesError}
+            onSelect={selectBranch}
+          />
+        ) : null}
 
         <nav className="mt-7 grid gap-4">
           {menu.map((item) => {
@@ -292,6 +354,7 @@ export function AppShell({ role, children }: AppShellProps) {
       router,
       selectBranch,
       selectedBranch,
+      shouldLoadBranches,
     ],
   );
 
@@ -510,4 +573,54 @@ function storeBranchId(branchId: number | null) {
   }
 
   window.localStorage.setItem(SELECTED_BRANCH_KEY, String(branchId));
+}
+
+function getStoredAuthRaw() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(STORED_AUTH_KEY) ?? window.sessionStorage.getItem(STORED_AUTH_KEY);
+}
+
+function getStoredAuthSnapshot() {
+  const raw = getStoredAuthRaw();
+
+  if (raw === cachedAuthRaw) {
+    return cachedAuth;
+  }
+
+  cachedAuthRaw = raw;
+
+  if (!raw) {
+    cachedAuth = null;
+    return cachedAuth;
+  }
+
+  try {
+    cachedAuth = JSON.parse(raw) as AuthResponse;
+  } catch {
+    cachedAuth = null;
+  }
+
+  return cachedAuth;
+}
+
+function getServerAuthSnapshot() {
+  return null;
+}
+
+function subscribeStoredAuth(listener: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === STORED_AUTH_KEY) {
+      listener();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
 }

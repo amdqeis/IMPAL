@@ -18,7 +18,7 @@ import {
 import { AppShell, useSelectedBranch } from "@/components/sibooking/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/States";
 import { useToast } from "@/components/sibooking/ToastProvider";
-import { ApiError, api, clearAuth, type Pembayaran } from "@/lib/api";
+import { ApiError, api, clearAuth, type PaginatedResponse, type PaginationMeta, type Pembayaran } from "@/lib/api";
 import { formatCurrency, formatDate, roomLabel } from "@/lib/format";
 import { useBranchResourceCache } from "@/lib/use-branch-resource-cache";
 
@@ -45,6 +45,14 @@ type FilterState = {
 
 const ITEMS_PER_PAGE = 8;
 const EMPTY_PAYMENTS: Pembayaran[] = [];
+const EMPTY_PAGINATION: PaginationMeta = {
+  page: 1,
+  limit: ITEMS_PER_PAGE,
+  total_items: 0,
+  total_pages: 0,
+  has_next: false,
+  has_prev: false,
+};
 const emptyFilters: FilterState = {
   fromDate: "",
   toDate: "",
@@ -97,12 +105,15 @@ function AdminCashflowContent() {
   );
 
   const branchId = selectedBranch?.id_cabang ?? null;
+  const requestedPage = pageState.branchId === branchId ? pageState.page : 1;
   const statusQuery = filters.status === "all" ? undefined : filters.status;
   const fetchBranchPayments = useCallback(
     (signal: AbortSignal) =>
       branchId
-        ? api.pembayaran.list(
+        ? api.pembayaran.listPaginated(
             {
+              page: requestedPage,
+              limit: ITEMS_PER_PAGE,
               id_cabang: branchId,
               status_pembayaran: statusQuery,
               start_date: filters.fromDate || undefined,
@@ -111,13 +122,13 @@ function AdminCashflowContent() {
             },
             { signal },
           )
-        : Promise.resolve([]),
-    [branchId, debouncedSearchQuery, filters.fromDate, filters.toDate, statusQuery],
+        : Promise.resolve(createEmptyPaginatedResponse<Pembayaran>()),
+    [branchId, debouncedSearchQuery, filters.fromDate, filters.toDate, requestedPage, statusQuery],
   );
-  const branchPayments = useBranchResourceCache<Pembayaran[]>({
+  const branchPayments = useBranchResourceCache<PaginatedResponse<Pembayaran>>({
     resource: "admin-cashflow",
     branchId,
-    cacheParts: ["status", statusQuery ?? "all", filters.fromDate, filters.toDate, debouncedSearchQuery],
+    cacheParts: ["status", statusQuery ?? "all", filters.fromDate, filters.toDate, debouncedSearchQuery, requestedPage, ITEMS_PER_PAGE],
     enabled: Boolean(branchId),
     fetcher: fetchBranchPayments,
   });
@@ -130,7 +141,9 @@ function AdminCashflowContent() {
     toast.error(handleApiError(branchPayments.error, "Gagal memuat data cashflow."));
   }, [branchPayments.error, handleApiError, toast]);
 
-  const payments = branchPayments.data ?? EMPTY_PAYMENTS;
+  const paymentResponse = branchPayments.data ?? createEmptyPaginatedResponse<Pembayaran>(requestedPage);
+  const payments = paymentResponse.data ?? EMPTY_PAYMENTS;
+  const pagination = paymentResponse.pagination;
   const rows = useMemo(() => toTransactionRows(payments), [payments]);
   const visibleRows = useMemo(
     () => filterRows(rows, filters, debouncedSearchQuery),
@@ -144,13 +157,9 @@ function AdminCashflowContent() {
     [rows],
   );
   const paidCount = rows.filter((row) => row.status === "paid").length;
-  const totalPages = Math.max(1, Math.ceil(visibleRows.length / ITEMS_PER_PAGE));
-  const page = pageState.branchId === branchId ? pageState.page : 1;
-  const currentPage = Math.min(page, totalPages);
-  const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return visibleRows.slice(start, start + ITEMS_PER_PAGE);
-  }, [currentPage, visibleRows]);
+  const totalPages = Math.max(1, pagination.total_pages || 1);
+  const currentPage = Math.min(requestedPage, totalPages);
+  const paginatedRows = visibleRows;
 
   const updateFilter = (key: keyof FilterState, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -339,7 +348,7 @@ function AdminCashflowContent() {
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
-                    totalItems={visibleRows.length}
+                    totalItems={pagination.total_items}
                     onPageChange={(nextPage) => setPageState({ branchId, page: nextPage })}
                   />
                 </>
@@ -453,6 +462,16 @@ function PageButton({
       {children}
     </button>
   );
+}
+
+function createEmptyPaginatedResponse<T>(page = 1): PaginatedResponse<T> {
+  return {
+    data: [],
+    pagination: {
+      ...EMPTY_PAGINATION,
+      page,
+    },
+  };
 }
 
 function toTransactionRows(payments: Pembayaran[]): TransactionRow[] {

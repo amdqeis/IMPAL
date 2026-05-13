@@ -18,7 +18,6 @@ import {
   roomLabel,
   roomTypeFromPrice,
 } from "@/lib/format";
-import { useApiData } from "@/lib/use-api-data";
 
 type DashboardBooking = {
   id: number;
@@ -80,10 +79,9 @@ export default function AdminDashboardPage() {
 
 function AdminDashboardContent() {
   const { selectedBranch, branchesLoading, branchesError } = useSelectedBranch();
-  const reservations = useApiData<Reservasi[]>(
-    () => api.reservasi.list({ status_reservasi: "pending", start_date: getJakartaDateIso(), sort_by: "tanggal", sort_order: "asc", limit: 100 }),
-    fallbackReservations,
-  );
+  const [reservationsData, setReservationsData] = useState<Reservasi[]>([]);
+  const [reservationsLoading, setReservationsLoading] = useState(false);
+  const [reservationsError, setReservationsError] = useState<string | null>(null);
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -93,11 +91,42 @@ function AdminDashboardContent() {
   useEffect(() => {
     let active = true;
     if (!selectedBranch) {
+      setReservationsData([]);
+      setReservationsLoading(false);
+      setReservationsError(null);
       setSummary(null);
       setSummaryLoading(false);
       setSummaryError(null);
       return;
     }
+
+    setReservationsLoading(true);
+    setReservationsError(null);
+    api.reservasi
+      .list({
+        id_cabang: selectedBranch.id_cabang,
+        status_reservasi: "pending",
+        start_date: getJakartaDateIso(),
+        sort_by: "tanggal",
+        sort_order: "asc",
+        limit: 20,
+      })
+      .then((result) => {
+        if (active) {
+          setReservationsData(result);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setReservationsError(err instanceof Error ? err.message : "Gagal memuat booking dashboard");
+          setReservationsData(fallbackReservations);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setReservationsLoading(false);
+        }
+      });
 
     setSummaryLoading(true);
     setSummaryError(null);
@@ -125,14 +154,8 @@ function AdminDashboardContent() {
   }, [selectedBranch]);
 
   const branchReservations = useMemo(() => {
-    if (!selectedBranch) {
-      return [];
-    }
-
-    return reservations.data.filter(
-      (reservation) => reservation.tempat?.id_cabang === selectedBranch.id_cabang,
-    );
-  }, [reservations.data, selectedBranch]);
+    return selectedBranch ? reservationsData : [];
+  }, [reservationsData, selectedBranch]);
   const upcomingBookings = useMemo(
     () => toDashboardBookings(branchReservations, getJakartaDateIso()),
     [branchReservations],
@@ -149,11 +172,11 @@ function AdminDashboardContent() {
 
   const updateBooking = async (booking: DashboardBooking, status: string) => {
     setBusyId(booking.id);
-    reservations.setError(null);
+    setReservationsError(null);
 
     try {
       const updated = await api.reservasi.updateStatus(booking.id, { status });
-      reservations.setData((current) =>
+      setReservationsData((current) =>
         current.map((item) => {
           if (item.id_reservasi !== updated.id_reservasi) {
             return item;
@@ -170,7 +193,7 @@ function AdminDashboardContent() {
       );
       setConfirmAction(null);
     } catch (err) {
-      reservations.setError(
+      setReservationsError(
         err instanceof Error ? err.message : "Gagal memperbarui booking",
       );
     } finally {
@@ -195,9 +218,9 @@ function AdminDashboardContent() {
           </h1>
         </motion.header>
 
-        {reservations.error ? (
+        {reservationsError ? (
           <div className="mt-4">
-            <ErrorState message={reservations.error} />
+            <ErrorState message={reservationsError} />
           </div>
         ) : null}
         {summaryError ? (
@@ -258,7 +281,7 @@ function AdminDashboardContent() {
                 <div className="mt-[17px] h-[3px] w-[62px] rounded-full bg-[#F5A400]" />
               </div>
 
-              {reservations.loading ? (
+              {reservationsLoading ? (
                 <div className="mt-4">
                   <LoadingState label="Memuat booking mendatang..." />
                 </div>
@@ -634,7 +657,7 @@ function toDashboardBookings(
         roomType: roomTypeFromPrice(reservation.tempat?.harga),
         status,
         rawStatus: reservation.status,
-        payment: paymentLabel(reservation.status),
+        payment: paymentLabel(reservation.latest_payment_status ?? reservation.status),
         date: formatDate(reservation.tanggal),
         dateIso: reservation.tanggal,
         time: `${normalizeTime(reservation.jadwal?.jam_mulai)} - ${normalizeTime(
@@ -663,10 +686,10 @@ function calculateBranchStats(reservations: Reservasi[]): BranchStats {
 
 function paymentLabel(status: string) {
   const normalized = normalizeStatus(status);
-  if (normalized === "confirmed" || normalized === "completed") {
+  if (normalized === "paid" || normalized === "confirmed" || normalized === "completed") {
     return "Lunas";
   }
-  if (normalized === "declined" || normalized === "cancelled") {
+  if (normalized === "refunded" || normalized === "declined" || normalized === "cancelled") {
     return "Refund";
   }
   return "Tagihan";

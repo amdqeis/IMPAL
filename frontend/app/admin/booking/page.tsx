@@ -20,7 +20,7 @@ import {
 import { AppShell, useSelectedBranch } from "@/components/sibooking/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/States";
 import { useToast } from "@/components/sibooking/ToastProvider";
-import { ApiError, api, clearAuth, type Pembayaran, type Reservasi } from "@/lib/api";
+import { ApiError, api, clearAuth, type PaginatedResponse, type PaginationMeta, type Reservasi } from "@/lib/api";
 import { formatCurrency, formatDate, normalizeTime, roomLabel, roomTypeFromPrice } from "@/lib/format";
 import { useBranchResourceCache } from "@/lib/use-branch-resource-cache";
 
@@ -30,7 +30,6 @@ type ActionStatus = "confirmed" | "declined";
 type BookingRow = {
   id: number;
   reservation: Reservasi;
-  payment: Pembayaran | null;
   roomName: string;
   roomType: string;
   customerName: string;
@@ -59,8 +58,7 @@ type FilterState = {
 };
 
 type BranchBookingData = {
-  reservations: Reservasi[];
-  payments: Pembayaran[];
+  reservations: PaginatedResponse<Reservasi>;
 };
 
 type SelectOption = {
@@ -71,7 +69,14 @@ type SelectOption = {
 const ITEMS_PER_PAGE = 9;
 const DEFAULT_TAB: StatusTab = "pending";
 const EMPTY_RESERVATIONS: Reservasi[] = [];
-const EMPTY_PAYMENTS: Pembayaran[] = [];
+const EMPTY_PAGINATION: PaginationMeta = {
+  page: 1,
+  limit: ITEMS_PER_PAGE,
+  total_items: 0,
+  total_pages: 0,
+  has_next: false,
+  has_prev: false,
+};
 
 const statusTabs: Array<{ key: StatusTab; label: string }> = [
   { key: "all", label: "All" },
@@ -136,44 +141,56 @@ function AdminBookingContent() {
   );
 
   const branchId = selectedBranch?.id_cabang ?? null;
+  const backendReservationStatus = getBackendReservationStatus(activeTab);
+  const usesBackendPagination =
+    filters.paymentStatus === "all" &&
+    filters.roomType === "all" &&
+    (activeTab === "all" || backendReservationStatus !== undefined);
+  const requestedPage = usesBackendPagination ? page : 1;
+  const reservationLimit = usesBackendPagination ? ITEMS_PER_PAGE : 100;
   const fetchBranchBookings = useCallback(
     async (signal: AbortSignal): Promise<BranchBookingData> => {
       if (!branchId) {
-        return { reservations: [], payments: [] };
+        return {
+          reservations: createEmptyPaginatedResponse<Reservasi>(),
+        };
       }
 
-      const [reservationResult, paymentResult] = await Promise.all([
-        api.reservasi.list(
-          {
-            id_cabang: branchId,
-            tanggal: filters.date || undefined,
-            search: debouncedSearchQuery || undefined,
-          },
-          { signal },
-        ),
-        api.pembayaran.list(
-          {
-            id_cabang: branchId,
-            status_pembayaran: filters.paymentStatus === "all" ? undefined : filters.paymentStatus,
-            search: debouncedSearchQuery || undefined,
-          },
-          { signal },
-        ),
-      ]);
+      const reservationResult = await api.reservasi.listPaginated(
+        {
+          page: requestedPage,
+          limit: reservationLimit,
+          id_cabang: branchId,
+          tanggal: filters.date || undefined,
+          search: debouncedSearchQuery || undefined,
+          status_reservasi: backendReservationStatus,
+        },
+        { signal },
+      );
 
-      return { reservations: reservationResult, payments: paymentResult };
+      return { reservations: reservationResult };
     },
-    [branchId, debouncedSearchQuery, filters.date, filters.paymentStatus],
+    [backendReservationStatus, branchId, debouncedSearchQuery, filters.date, requestedPage, reservationLimit],
   );
   const branchBookings = useBranchResourceCache<BranchBookingData>({
     resource: "admin-bookings",
     branchId,
-    cacheParts: ["raw", filters.date, filters.paymentStatus, debouncedSearchQuery],
+    cacheParts: [
+      "raw",
+      activeTab,
+      filters.date,
+      filters.paymentStatus,
+      filters.roomType,
+      debouncedSearchQuery,
+      requestedPage,
+      reservationLimit,
+    ],
     enabled: Boolean(branchId),
     fetcher: fetchBranchBookings,
   });
-  const reservations = branchBookings.data?.reservations ?? EMPTY_RESERVATIONS;
-  const payments = branchBookings.data?.payments ?? EMPTY_PAYMENTS;
+  const reservationResponse = branchBookings.data?.reservations ?? createEmptyPaginatedResponse<Reservasi>(requestedPage, reservationLimit);
+  const reservations = reservationResponse.data ?? EMPTY_RESERVATIONS;
+  const reservationPagination = reservationResponse.pagination;
   const loading = branchBookings.loading;
 
   useEffect(() => {
@@ -186,7 +203,7 @@ function AdminBookingContent() {
     toast.error(message);
   }, [branchBookings.error, handleApiError, toast]);
 
-  const rows = useMemo(() => toBookingRows(reservations, payments), [reservations, payments]);
+  const rows = useMemo(() => toBookingRows(reservations), [reservations]);
   const paymentStatusOptions = useMemo(() => buildPaymentStatusOptions(rows), [rows]);
 
   const rowsAfterSearchAndFilters = useMemo(
@@ -211,23 +228,30 @@ function AdminBookingContent() {
     [activeTab, rowsAfterSearchAndFilters],
   );
 
-  const totalPages = Math.max(1, Math.ceil(visibleRows.length / ITEMS_PER_PAGE));
+  const totalItems = usesBackendPagination ? reservationPagination.total_items : visibleRows.length;
+  const totalPages = Math.max(
+    1,
+    usesBackendPagination ? reservationPagination.total_pages || 1 : Math.ceil(visibleRows.length / ITEMS_PER_PAGE),
+  );
   const currentPage = Math.min(page, totalPages);
   const paginatedRows = useMemo(() => {
+    if (usesBackendPagination) {
+      return visibleRows;
+    }
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return visibleRows.slice(start, start + ITEMS_PER_PAGE);
-  }, [currentPage, visibleRows]);
+  }, [currentPage, usesBackendPagination, visibleRows]);
 
   const summary = useMemo(
     () => ({
-      total: rows.length,
+      total: usesBackendPagination ? reservationPagination.total_items : rows.length,
       pending: rows.filter((row) => row.reservationStatus === "pending").length,
       confirmed: rows.filter((row) => row.reservationStatus === "confirmed").length,
       doneOrCancelled: rows.filter((row) =>
         ["cancelled", "declined", "completed"].includes(row.reservationStatus),
       ).length,
     }),
-    [rows],
+    [reservationPagination.total_items, rows, usesBackendPagination],
   );
 
   useEffect(() => {
@@ -270,17 +294,20 @@ function AdminBookingContent() {
         current
           ? {
               ...current,
-              reservations: current.reservations.map((item) =>
-                item.id_reservasi === updated.id_reservasi
-                  ? {
-                      ...item,
-                      ...updated,
-                      user: updated.user ?? item.user,
-                      tempat: updated.tempat ?? item.tempat,
-                      jadwal: updated.jadwal ?? item.jadwal,
-                    }
-                  : item,
-              ),
+              reservations: {
+                ...current.reservations,
+                data: current.reservations.data.map((item) =>
+                  item.id_reservasi === updated.id_reservasi
+                    ? {
+                        ...item,
+                        ...updated,
+                        user: updated.user ?? item.user,
+                        tempat: updated.tempat ?? item.tempat,
+                        jadwal: updated.jadwal ?? item.jadwal,
+                      }
+                    : item,
+                ),
+              },
             }
           : current,
       );
@@ -444,7 +471,7 @@ function AdminBookingContent() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={visibleRows.length}
+              totalItems={totalItems}
               onPageChange={setPage}
             />
           </>
@@ -736,6 +763,25 @@ function PageButton({
   );
 }
 
+function createEmptyPaginatedResponse<T>(page = 1, limit = ITEMS_PER_PAGE): PaginatedResponse<T> {
+  return {
+    data: [],
+    pagination: {
+      ...EMPTY_PAGINATION,
+      page,
+      limit,
+    },
+  };
+}
+
+function getBackendReservationStatus(tab: StatusTab) {
+  if (tab === "pending" || tab === "confirmed" || tab === "completed") {
+    return tab;
+  }
+
+  return undefined;
+}
+
 function ConfirmActionDialog({
   action,
   busy,
@@ -843,18 +889,15 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function toBookingRows(reservations: Reservasi[], payments: Pembayaran[]): BookingRow[] {
-  const paymentByReservation = getLatestPaymentByReservation(payments);
-
+function toBookingRows(reservations: Reservasi[]): BookingRow[] {
   return reservations.map((reservation) => {
-    const payment = paymentByReservation.get(reservation.id_reservasi) ?? null;
     const roomName = roomLabel(reservation.tempat?.nomor_meja, `Room #${reservation.id_tempat}`);
     const roomType = roomTypeFromPrice(reservation.tempat?.harga);
     const customerName = reservation.user?.nama ?? `User #${reservation.id_user}`;
     const branchName = reservation.tempat?.cabang?.nama ?? "Cabang tidak diketahui";
     const branchKey = reservation.tempat?.id_cabang ? String(reservation.tempat.id_cabang) : normalizeStatus(branchName);
     const reservationStatus = normalizeStatus(reservation.status) || "pending";
-    const paymentStatus = normalizeStatus(payment?.status) || "unpaid";
+    const paymentStatus = normalizeStatus(reservation.latest_payment_status ?? "") || "unpaid";
     const dateLabel = formatDate(reservation.tanggal);
     const timeRange = `${normalizeTime(reservation.jadwal?.jam_mulai)} - ${normalizeTime(reservation.jadwal?.jam_selesai)}`;
     const reservationStatusLabel = getReservationStatusLabel(reservationStatus);
@@ -864,7 +907,6 @@ function toBookingRows(reservations: Reservasi[], payments: Pembayaran[]): Booki
     return {
       id: reservation.id_reservasi,
       reservation,
-      payment,
       roomName,
       roomType,
       customerName,
@@ -897,19 +939,6 @@ function toBookingRows(reservations: Reservasi[], payments: Pembayaran[]): Booki
         .toLowerCase(),
     };
   });
-}
-
-function getLatestPaymentByReservation(payments: Pembayaran[]) {
-  const map = new Map<number, Pembayaran>();
-
-  for (const payment of payments) {
-    const current = map.get(payment.id_reservasi);
-    if (!current || payment.id_payment > current.id_payment) {
-      map.set(payment.id_reservasi, payment);
-    }
-  }
-
-  return map;
 }
 
 function buildPaymentStatusOptions(rows: BookingRow[]): SelectOption[] {
