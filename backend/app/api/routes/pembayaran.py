@@ -3,12 +3,13 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import DbSession, require_permissions
+from app.api.deps import require_permissions, run_db
 from app.models import User
 from app.schemas import (
     COMMON_ERROR_RESPONSES,
     PaginatedResponse,
     PaymentCreate,
+    PaymentListRead,
     PaymentLogCreate,
     PaymentLogRead,
     PaymentRead,
@@ -26,13 +27,12 @@ router = APIRouter(prefix="/pembayaran", tags=["5. Pembayaran"])
 
 @router.get(
     "/",
-    response_model=PaginatedResponse[PaymentRead],
+    response_model=PaginatedResponse[PaymentListRead],
     summary="List pembayaran",
     description="Mengambil daftar pembayaran. User biasa hanya melihat pembayaran dari reservasinya sendiri; manage_payments dapat melihat semua.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_pembayaran(
-    db: DbSession,
+async def list_pembayaran(
     current_user: User = Depends(require_permissions(VIEW_PAYMENTS, MANAGE_PAYMENTS)),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -46,8 +46,8 @@ def list_pembayaran(
     sort_order: Literal["asc", "desc"] = "asc",
 ):
     """Return payments scoped by permission."""
-    return service.list_pembayaran(
-        db,
+    return await run_db(
+        service.list_pembayaran,
         current_user=current_user,
         page=page,
         limit=limit,
@@ -70,13 +70,12 @@ def list_pembayaran(
     description="Membuat pembayaran untuk reservasi. User biasa hanya boleh membuat pembayaran untuk reservasinya sendiri.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_pembayaran(
+async def create_pembayaran(
     payload: PaymentCreate,
-    db: DbSession,
     current_user: User = Depends(require_permissions(CREATE_PAYMENTS, MANAGE_PAYMENTS)),
 ):
     """Create a payment."""
-    return service.create_pembayaran(db, payload, current_user=current_user)
+    return await run_db(service.create_pembayaran, payload, current_user=current_user, serializer=PaymentRead)
 
 
 @router.patch(
@@ -86,14 +85,13 @@ def create_pembayaran(
     description="Mengubah status pembayaran. Membutuhkan permission manage_payments.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_status_pembayaran(
+async def update_status_pembayaran(
     payment_id: int,
     payload: PaymentUpdateStatus,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_PAYMENTS)),
 ):
     """Update payment status."""
-    return service.update_status_pembayaran(db, payment_id, payload)
+    return await run_db(service.update_status_pembayaran, payment_id, payload, serializer=PaymentRead)
 
 
 @router.post(
@@ -104,14 +102,13 @@ def update_status_pembayaran(
     description="Menyimpan response gateway pembayaran. Membutuhkan permission manage_payments.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_payment_log(
+async def create_payment_log(
     payment_id: int,
     payload: PaymentLogCreate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_PAYMENTS)),
 ):
     """Create a payment log."""
-    return service.create_payment_log(db, payment_id, payload)
+    return await run_db(service.create_payment_log, payment_id, payload, serializer=PaymentLogRead)
 
 
 @router.post(
@@ -122,14 +119,13 @@ def create_payment_log(
     description="Membuat request refund. User biasa hanya boleh refund pembayaran miliknya sendiri.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_refund(
+async def create_refund(
     payment_id: int,
     payload: RefundCreate,
-    db: DbSession,
     current_user: User = Depends(require_permissions(REQUEST_REFUNDS, MANAGE_PAYMENTS)),
 ):
     """Create a refund request."""
-    return service.create_refund(db, payment_id, payload, current_user=current_user)
+    return await run_db(service.create_refund, payment_id, payload, current_user=current_user, serializer=RefundRead)
 
 
 @router.patch(
@@ -139,11 +135,10 @@ def create_refund(
     description="Mengubah status refund. Membutuhkan permission approve_refunds atau manage_payments.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_status_refund(
+async def update_status_refund(
     refund_id: int,
     payload: RefundUpdateStatus,
-    db: DbSession,
     _current_user=Depends(require_permissions(APPROVE_REFUNDS, MANAGE_PAYMENTS)),
 ):
     """Update refund status."""
-    return service.update_status_refund(db, refund_id, payload)
+    return await run_db(service.update_status_refund, refund_id, payload, serializer=RefundRead)

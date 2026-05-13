@@ -1,12 +1,15 @@
+import asyncio
 from datetime import date
+import logging
+from time import perf_counter
 from typing import Literal
 
 from fastapi import APIRouter, Depends, status
 from fastapi import Query
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
-from app.api.deps import DbSession, require_permissions
+from app.api.deps import require_permissions, run_db
 from app.models import Payment, Reservasi, Tempat, User
 from app.schemas import COMMON_ERROR_RESPONSES, DashboardSummaryRead, LaporanCreate, LaporanRead, LaporanUpdate, PaginatedResponse
 from app.services import laporan as service
@@ -14,6 +17,7 @@ from app.services.permissions import MANAGE_REPORTS, VIEW_REPORTS
 
 
 router = APIRouter(prefix="/laporan", tags=["6. Laporan"])
+summary_logger = logging.getLogger("app.db")
 
 
 @router.get(
@@ -23,8 +27,7 @@ router = APIRouter(prefix="/laporan", tags=["6. Laporan"])
     description="Mengambil daftar laporan. Membutuhkan permission view_reports atau manage_reports.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_laporan(
-    db: DbSession,
+async def list_laporan(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     search: str | None = Query(default=None, min_length=1, max_length=255),
@@ -35,8 +38,8 @@ def list_laporan(
     _current_user=Depends(require_permissions(VIEW_REPORTS, MANAGE_REPORTS)),
 ):
     """Return reports using database pagination."""
-    return service.list_laporan(
-        db,
+    return await run_db(
+        service.list_laporan,
         page=page,
         limit=limit,
         search=search,
@@ -54,55 +57,87 @@ def list_laporan(
     description="Mengembalikan metrik ringkas booking dan pembayaran untuk dashboard/cashflow admin.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def get_dashboard_summary(
-    db: DbSession,
+async def get_dashboard_summary(
     id_cabang: int | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
     _current_user=Depends(require_permissions(VIEW_REPORTS, MANAGE_REPORTS)),
 ) -> DashboardSummaryRead:
-    reservation_count_query = _apply_reservasi_summary_filters(
-        select(func.count(Reservasi.id_reservasi)),
+    reservations_task = run_db(
+        _get_reservation_summary,
         id_cabang=id_cabang,
         start_date=start_date,
         end_date=end_date,
     )
-    active_count_query = _apply_reservasi_summary_filters(
-        select(func.count(Reservasi.id_reservasi)).where(Reservasi.status.in_(("pending", "confirmed"))),
+    payments_task = run_db(
+        _get_payment_summary,
         id_cabang=id_cabang,
         start_date=start_date,
         end_date=end_date,
     )
-    paid_count_query = _apply_payment_summary_filters(
-        select(func.count(Payment.id_payment)).select_from(Payment).where(Payment.status == "paid"),
-        id_cabang=id_cabang,
-        start_date=start_date,
-        end_date=end_date,
+    reservation_summary, payment_summary = await asyncio.gather(reservations_task, payments_task)
+    total_bookings, active_bookings, reservations_duration_ms = reservation_summary
+    paid_payments, pending_payments, income_total, payments_duration_ms = payment_summary
+    summary_logger.info(
+        "laporan.summary reservations %.2fms payments %.2fms",
+        reservations_duration_ms,
+        payments_duration_ms,
     )
-    pending_count_query = _apply_payment_summary_filters(
-        select(func.count(Payment.id_payment)).select_from(Payment).where(Payment.status == "pending"),
-        id_cabang=id_cabang,
-        start_date=start_date,
-        end_date=end_date,
-    )
-    income_query = _apply_payment_summary_filters(
-        select(func.coalesce(func.sum(Payment.amount), 0)).select_from(Payment).where(Payment.status == "paid"),
-        id_cabang=id_cabang,
-        start_date=start_date,
-        end_date=end_date,
-    )
-    total_bookings = db.scalar(reservation_count_query) or 0
-    active_bookings = db.scalar(active_count_query) or 0
-    paid_payments = db.scalar(paid_count_query) or 0
-    pending_payments = db.scalar(pending_count_query) or 0
-    income_total = db.scalar(income_query) or 0
     return DashboardSummaryRead(
-        total_bookings=total_bookings,
-        active_bookings=active_bookings,
-        paid_payments=paid_payments,
-        pending_payments=pending_payments,
+        total_bookings=int(total_bookings or 0),
+        active_bookings=int(active_bookings or 0),
+        paid_payments=int(paid_payments or 0),
+        pending_payments=int(pending_payments or 0),
         income_total=str(income_total),
     )
+
+
+def _get_reservation_summary(
+    db,
+    *,
+    id_cabang: int | None,
+    start_date: date | None,
+    end_date: date | None,
+):
+    query = _apply_reservasi_summary_filters(
+        select(
+            func.count(Reservasi.id_reservasi),
+            func.coalesce(
+                func.sum(case((Reservasi.status.in_(("pending", "confirmed")), 1), else_=0)),
+                0,
+            ),
+        ),
+        id_cabang=id_cabang,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    started_at = perf_counter()
+    total_bookings, active_bookings = db.execute(query).one()
+    duration_ms = (perf_counter() - started_at) * 1000
+    return total_bookings, active_bookings, duration_ms
+
+
+def _get_payment_summary(
+    db,
+    *,
+    id_cabang: int | None,
+    start_date: date | None,
+    end_date: date | None,
+):
+    query = _apply_payment_summary_filters(
+        select(
+            func.coalesce(func.sum(case((Payment.status == "paid", 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Payment.status == "pending", 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Payment.status == "paid", Payment.amount), else_=0)), 0),
+        ).select_from(Payment),
+        id_cabang=id_cabang,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    started_at = perf_counter()
+    paid_payments, pending_payments, income_total = db.execute(query).one()
+    duration_ms = (perf_counter() - started_at) * 1000
+    return paid_payments, pending_payments, income_total, duration_ms
 
 
 def _apply_reservasi_summary_filters(query, *, id_cabang: int | None, start_date: date | None, end_date: date | None):
@@ -136,13 +171,12 @@ def _apply_payment_summary_filters(query, *, id_cabang: int | None, start_date: 
     description="Membuat metadata laporan. Membutuhkan permission manage_reports.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_laporan(
+async def create_laporan(
     payload: LaporanCreate,
-    db: DbSession,
     current_user: User = Depends(require_permissions(MANAGE_REPORTS)),
 ):
     """Create a report."""
-    return service.create_laporan(db, payload, dibuat_oleh=current_user.id_user)
+    return await run_db(service.create_laporan, payload, dibuat_oleh=current_user.id_user, serializer=LaporanRead)
 
 
 @router.patch(
@@ -152,14 +186,13 @@ def create_laporan(
     description="Memperbarui sebagian metadata laporan. Membutuhkan permission manage_reports.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_laporan(
+async def update_laporan(
     laporan_id: int,
     payload: LaporanUpdate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_REPORTS)),
 ):
     """Patch report metadata."""
-    return service.update_laporan(db, laporan_id, payload)
+    return await run_db(service.update_laporan, laporan_id, payload, serializer=LaporanRead)
 
 
 @router.get(
@@ -168,13 +201,12 @@ def update_laporan(
     description="Menghasilkan PDF laporan dari data terbaru di database.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def download_laporan_pdf(
+async def download_laporan_pdf(
     laporan_id: int,
-    db: DbSession,
     _current_user=Depends(require_permissions(VIEW_REPORTS, MANAGE_REPORTS)),
 ) -> Response:
     """Generate a PDF file for a report."""
-    pdf_bytes, filename = service.generate_laporan_pdf(db, laporan_id)
+    pdf_bytes, filename = await run_db(service.generate_laporan_pdf, laporan_id)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

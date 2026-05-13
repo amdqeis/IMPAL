@@ -1,5 +1,5 @@
-from sqlalchemy import asc, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import asc, func, or_, select
+from sqlalchemy.orm import Session, load_only, noload, selectinload
 
 from app.models import Cabang, Tempat
 from app.repositories.query_helpers import apply_sort, normalize_search, paginate_scalars
@@ -14,11 +14,16 @@ def list_cabang(
     sort_by: str | None = None,
     sort_order: str = "asc",
 ) -> tuple[list[Cabang], int]:
-    query = select(Cabang)
+    query = select(Cabang).options(
+        load_only(Cabang.id_cabang, Cabang.nama, Cabang.lokasi),
+        noload(Cabang.tempat_list),
+    )
+    count_query = select(func.count(Cabang.id_cabang))
     search_value = normalize_search(search)
     if search_value:
         pattern = f"%{search_value}%"
         query = query.where(or_(Cabang.nama.ilike(pattern), Cabang.lokasi.ilike(pattern)))
+        count_query = count_query.where(or_(Cabang.nama.ilike(pattern), Cabang.lokasi.ilike(pattern)))
 
     query = apply_sort(
         query,
@@ -31,7 +36,14 @@ def list_cabang(
         },
         default_order=(asc(Cabang.id_cabang),),
     )
-    return paginate_scalars(db, query, page=page, limit=limit)
+    return paginate_scalars(
+        db,
+        query,
+        page=page,
+        limit=limit,
+        count_query=count_query,
+        log_label="master_data.cabang.list",
+    )
 
 
 def get_cabang(db: Session, cabang_id: int) -> Cabang | None:
@@ -49,7 +61,14 @@ def list_tempat(
     sort_by: str | None = None,
     sort_order: str = "asc",
 ) -> tuple[list[Tempat], int]:
-    query = select(Tempat)
+    query = select(Tempat).options(
+        load_only(Tempat.id_tempat, Tempat.id_cabang, Tempat.nomor_meja, Tempat.harga, Tempat.status),
+        noload(Tempat.jadwal_list),
+        selectinload(Tempat.cabang).options(
+            load_only(Cabang.id_cabang, Cabang.nama, Cabang.lokasi),
+            noload(Cabang.tempat_list),
+        ),
+    )
     if id_cabang is not None:
         query = query.where(Tempat.id_cabang == id_cabang)
     if status_tempat is not None:

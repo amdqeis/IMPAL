@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.models import Base, Cabang, Jadwal, Payment, Reservasi, Tempat, User
 from app.services import master_data as master_data_service
 from app.services import pembayaran as pembayaran_service
+from app.services import reservasi as reservasi_service
 
 
 class PaginationServiceTest(unittest.TestCase):
@@ -108,6 +109,39 @@ class PaginationServiceTest(unittest.TestCase):
         self.assertEqual(result.pagination.total_items, 1)
         self.assertEqual(len(result.data), 1)
         self.assertEqual(result.data[0].reservasi.id_user, user.id_user)
+        self.assertEqual(result.data[0].reservasi.latest_payment_status, "paid")
+
+    def test_reservasi_list_returns_lightweight_nested_fields_and_latest_payment(self) -> None:
+        user = self._create_user("customer@example.com")
+        cabang = Cabang(nama="Cabang Reservasi", lokasi="Bandung")
+        self.db.add(cabang)
+        self.db.flush()
+        tempat = Tempat(id_cabang=cabang.id_cabang, nomor_meja="B02", harga=150000, status="available")
+        self.db.add(tempat)
+        self.db.flush()
+        jadwal = Jadwal(id_tempat=tempat.id_tempat, jam_mulai=time(11, 0), jam_selesai=time(12, 0))
+        self.db.add(jadwal)
+        self.db.flush()
+        reservasi = Reservasi(
+            id_user=user.id_user,
+            id_tempat=tempat.id_tempat,
+            id_jadwal=jadwal.id_jadwal,
+            tanggal=date.today() + timedelta(days=1),
+            status="pending",
+            total_harga=Decimal("150000.00"),
+        )
+        self.db.add(reservasi)
+        self.db.flush()
+        self.db.add(Payment(id_reservasi=reservasi.id_reservasi, amount=150000, status="paid"))
+        self.db.commit()
+
+        result = reservasi_service.list_reservasi(self.db, current_user=user, page=1, limit=20)
+
+        self.assertEqual(result.pagination.total_items, 1)
+        self.assertEqual(result.data[0].user.nama, "customer")
+        self.assertEqual(result.data[0].tempat.cabang.nama, "Cabang Reservasi")
+        self.assertEqual(result.data[0].jadwal.jam_mulai, time(11, 0))
+        self.assertEqual(result.data[0].latest_payment_status, "paid")
 
 
 if __name__ == "__main__":

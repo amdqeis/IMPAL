@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import CurrentUser, DbSession, require_permissions
+from app.api.deps import CurrentUser, require_permissions, run_db
 from app.models import User
 from app.repositories import users as user_repo
 from app.schemas import (
@@ -48,9 +48,9 @@ def require_admin_user_manager(current_user: CurrentUser) -> User:
     description="Mendaftarkan user baru, meng-hash password, memberi role default user, dan mengembalikan JWT access token.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def register(payload: UserCreate, db: DbSession) -> AuthResponse:
+async def register(payload: UserCreate) -> AuthResponse:
     """Register a user and return access metadata."""
-    return auth_service.register_user(db, payload)
+    return await run_db(auth_service.register_user, payload)
 
 
 @router.post(
@@ -60,9 +60,9 @@ def register(payload: UserCreate, db: DbSession) -> AuthResponse:
     description="Memvalidasi email/password dan menghasilkan JWT access token dengan roles dan permissions user.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def login(payload: LoginRequest, db: DbSession) -> AuthResponse:
+async def login(payload: LoginRequest) -> AuthResponse:
     """Authenticate a user and issue a JWT access token."""
-    return auth_service.login_user(db, payload)
+    return await run_db(auth_service.login_user, payload)
 
 
 @router.post(
@@ -96,8 +96,7 @@ def get_me(current_user: CurrentUser) -> AuthResponse:
     description="Mengembalikan daftar user beserta role dan permission. Membutuhkan permission manage_users.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_users(
-    db: DbSession,
+async def list_users(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     search: str | None = Query(default=None, min_length=1, max_length=255),
@@ -107,8 +106,8 @@ def list_users(
     _current_user=Depends(require_admin_user_manager),
 ) -> PaginatedResponse[UserAccessRead]:
     """Return all users for admin management."""
-    return auth_service.list_users(
-        db,
+    return await run_db(
+        auth_service.list_users,
         page=page,
         limit=limit,
         search=search,
@@ -125,11 +124,11 @@ def list_users(
     description="Mengembalikan role dan permission user. User boleh melihat miliknya sendiri; manage_users boleh melihat semua user.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def get_user_access(user_id: int, db: DbSession, current_user: CurrentUser) -> AuthResponse:
+async def get_user_access(user_id: int, current_user: CurrentUser) -> AuthResponse:
     """Return role and permission metadata for a user."""
     if user_id != current_user.id_user and not _can_manage_users(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh melihat akses user lain")
-    return auth_service.get_user_access(db, user_id)
+    return await run_db(auth_service.get_user_access, user_id)
 
 
 @router.patch(
@@ -139,16 +138,15 @@ def get_user_access(user_id: int, db: DbSession, current_user: CurrentUser) -> A
     description="Memperbarui profil user. User boleh memperbarui dirinya sendiri; manage_users boleh memperbarui semua user.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_user(
+async def update_user(
     user_id: int,
     payload: UserUpdate,
-    db: DbSession,
     current_user: CurrentUser,
 ) -> UserAccessRead:
     """Patch user profile data."""
     if user_id != current_user.id_user and not _can_manage_users(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh mengubah user lain")
-    return auth_service.update_user(db, user_id, payload)
+    return await run_db(auth_service.update_user, user_id, payload)
 
 
 @router.delete(
@@ -158,13 +156,12 @@ def update_user(
     description="Menghapus user. Membutuhkan permission manage_users.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def delete_user(
+async def delete_user(
     user_id: int,
-    db: DbSession,
     _current_user=Depends(require_admin_user_manager),
 ):
     """Delete a user."""
-    auth_service.delete_user(db, user_id)
+    await run_db(auth_service.delete_user, user_id)
 
 
 @router.get(
@@ -174,9 +171,8 @@ def delete_user(
     description="Mengembalikan seluruh nama permission yang tersedia. Endpoint ini membutuhkan permission manage_roles.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_permissions(
-    db: DbSession,
+async def list_permissions(
     _current_user=Depends(require_permissions(MANAGE_ROLES)),
 ) -> list[str]:
     """List all configured permission names."""
-    return user_repo.list_permission_names(db)
+    return await run_db(user_repo.list_permission_names)

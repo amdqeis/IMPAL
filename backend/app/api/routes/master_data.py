@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import DbSession, require_permissions
+from app.api.deps import require_permissions, run_db
 from app.schemas import (
     COMMON_ERROR_RESPONSES,
     CabangCreate,
@@ -27,8 +27,7 @@ router = APIRouter(prefix="/master-data", tags=["2. Kelola Cabang & Tempat"])
     description="Mengambil daftar seluruh cabang. Membutuhkan permission view_locations atau permission kelola lokasi.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_cabang(
-    db: DbSession,
+async def list_cabang(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     search: str | None = Query(default=None, min_length=1, max_length=255),
@@ -37,8 +36,8 @@ def list_cabang(
     _current_user=Depends(require_permissions(VIEW_LOCATIONS, MANAGE_BRANCHES, MANAGE_TABLES)),
 ):
     """Return branches using database pagination."""
-    return service.list_cabang(
-        db,
+    return await run_db(
+        service.list_cabang,
         page=page,
         limit=limit,
         search=search,
@@ -55,13 +54,12 @@ def list_cabang(
     description="Membuat cabang baru. Membutuhkan permission manage_branches.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_cabang(
+async def create_cabang(
     payload: CabangCreate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_BRANCHES)),
 ):
     """Create a branch."""
-    return service.create_cabang(db, payload)
+    return await run_db(service.create_cabang, payload, serializer=CabangRead)
 
 
 @router.patch(
@@ -71,14 +69,13 @@ def create_cabang(
     description="Memperbarui sebagian data cabang berdasarkan ID. Membutuhkan permission manage_branches.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_cabang(
+async def update_cabang(
     cabang_id: int,
     payload: CabangUpdate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_BRANCHES)),
 ):
     """Patch branch data."""
-    return service.update_cabang(db, cabang_id, payload)
+    return await run_db(service.update_cabang, cabang_id, payload, serializer=CabangRead)
 
 
 @router.delete(
@@ -88,13 +85,12 @@ def update_cabang(
     description="Menghapus cabang berdasarkan ID. Membutuhkan permission manage_branches.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def delete_cabang(
+async def delete_cabang(
     cabang_id: int,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_BRANCHES)),
 ):
     """Delete a branch."""
-    service.delete_cabang(db, cabang_id)
+    await run_db(service.delete_cabang, cabang_id)
 
 
 @router.get(
@@ -104,8 +100,7 @@ def delete_cabang(
     description="Mengambil daftar meja/tempat, dapat difilter berdasarkan cabang dan status. Membutuhkan permission view_locations atau kelola tempat.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_tempat(
-    db: DbSession,
+async def list_tempat(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     id_cabang: int | None = None,
@@ -116,8 +111,8 @@ def list_tempat(
     _current_user=Depends(require_permissions(VIEW_LOCATIONS, MANAGE_BRANCHES, MANAGE_TABLES)),
 ):
     """Return tables with optional filters using database pagination."""
-    return service.list_tempat(
-        db,
+    return await run_db(
+        service.list_tempat,
         page=page,
         limit=limit,
         id_cabang=id_cabang,
@@ -136,13 +131,12 @@ def list_tempat(
     description="Membuat meja/tempat pada cabang yang sudah ada. Membutuhkan permission manage_tables.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_tempat(
+async def create_tempat(
     payload: TempatCreate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_TABLES)),
 ):
     """Create a table."""
-    return service.create_tempat(db, payload)
+    return await run_db(service.create_tempat, payload, serializer=TempatRead)
 
 
 @router.patch(
@@ -152,14 +146,13 @@ def create_tempat(
     description="Memperbarui sebagian data meja/tempat berdasarkan ID. Membutuhkan permission manage_tables.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_tempat(
+async def update_tempat(
     tempat_id: int,
     payload: TempatUpdate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_TABLES)),
 ):
     """Patch table data."""
-    return service.update_tempat(db, tempat_id, payload)
+    return await run_db(service.update_tempat, tempat_id, payload, serializer=TempatRead)
 
 
 @router.delete(
@@ -169,10 +162,9 @@ def update_tempat(
     description="Menghapus meja/tempat berdasarkan ID. Membutuhkan permission manage_tables.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def delete_tempat(
+async def delete_tempat(
     tempat_id: int,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_TABLES)),
 ):
     """Delete a table."""
-    service.delete_tempat(db, tempat_id)
+    await run_db(service.delete_tempat, tempat_id)

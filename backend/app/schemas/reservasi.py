@@ -36,3 +36,8 @@ class ReservasiRead(ORMModel):
     user: UserRead | None = None
     tempat: TempatRead | None = None
     jadwal: JadwalRead | None = None
+
+
+class ReservasiListRead(ReservasiRead):
+    latest_payment_id: int | None = None
+    latest_payment_status: str | None = None

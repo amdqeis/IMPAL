@@ -1,9 +1,14 @@
 from collections.abc import Sequence
+import logging
+from time import perf_counter
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import Select, asc, desc, func, select
+from sqlalchemy import Select, asc, desc, func
 from sqlalchemy.orm import Session
+
+
+query_logger = logging.getLogger("app.db")
 
 
 def normalize_search(search: str | None) -> str | None:
@@ -49,9 +54,31 @@ def apply_sort(
     return query.order_by(ordering)
 
 
-def paginate_scalars(db: Session, query: Select[Any], *, page: int, limit: int) -> tuple[list[Any], int]:
-    count_query = select(func.count()).select_from(query.order_by(None).subquery())
+def paginate_scalars(
+    db: Session,
+    query: Select[Any],
+    *,
+    page: int,
+    limit: int,
+    count_query: Select[Any] | None = None,
+    log_label: str = "pagination",
+) -> tuple[list[Any], int]:
+    if count_query is None:
+        count_query = query.with_only_columns(func.count(), maintain_column_froms=True)
+    count_query = count_query.order_by(None)
+    count_started_at = perf_counter()
     total_items = db.scalar(count_query) or 0
+    count_duration_ms = (perf_counter() - count_started_at) * 1000
     offset = (page - 1) * limit
+    items_started_at = perf_counter()
     items = list(db.scalars(query.offset(offset).limit(limit)).all())
+    items_duration_ms = (perf_counter() - items_started_at) * 1000
+    query_logger.info(
+        "%s count %.2fms data %.2fms serialize 0.00ms rows=%s total=%s",
+        log_label,
+        count_duration_ms,
+        items_duration_ms,
+        len(items),
+        total_items,
+    )
     return items, total_items

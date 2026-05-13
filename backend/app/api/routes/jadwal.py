@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import DbSession, require_permissions
+from app.api.deps import require_permissions, run_db
 from app.schemas import COMMON_ERROR_RESPONSES, JadwalAvailabilityRead, JadwalCreate, JadwalRead, JadwalUpdate, PaginatedResponse
 from app.services import jadwal as service
 from app.services.permissions import MANAGE_SCHEDULES, VIEW_SCHEDULES
@@ -19,8 +19,7 @@ router = APIRouter(prefix="/jadwal", tags=["3. Kelola Jadwal"])
     description="Mengambil daftar slot jadwal, dapat difilter berdasarkan tempat. Membutuhkan permission view_schedules atau manage_schedules.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_jadwal(
-    db: DbSession,
+async def list_jadwal(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     id_tempat: int | None = None,
@@ -32,8 +31,8 @@ def list_jadwal(
     _current_user=Depends(require_permissions(VIEW_SCHEDULES, MANAGE_SCHEDULES)),
 ):
     """Return schedules with optional filters."""
-    return service.list_jadwal(
-        db,
+    return await run_db(
+        service.list_jadwal,
         page=page,
         limit=limit,
         id_tempat=id_tempat,
@@ -52,8 +51,7 @@ def list_jadwal(
     description="Mengambil slot jadwal untuk tempat dan tanggal tertentu, lengkap dengan status available. Membutuhkan permission view_schedules atau manage_schedules.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_jadwal_availability(
-    db: DbSession,
+async def list_jadwal_availability(
     id_tempat: int,
     tanggal: date,
     page: int = Query(default=1, ge=1),
@@ -63,8 +61,8 @@ def list_jadwal_availability(
     _current_user=Depends(require_permissions(VIEW_SCHEDULES, MANAGE_SCHEDULES)),
 ):
     """Return schedule slots with availability."""
-    return service.list_jadwal_availability(
-        db,
+    return await run_db(
+        service.list_jadwal_availability,
         page=page,
         limit=limit,
         id_tempat=id_tempat,
@@ -81,8 +79,7 @@ def list_jadwal_availability(
     description="Mengambil jadwal yang tempatnya berstatus available. Membutuhkan permission view_schedules atau manage_schedules.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_jadwal_tersedia(
-    db: DbSession,
+async def list_jadwal_tersedia(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     id_tempat: int | None = None,
@@ -94,8 +91,8 @@ def list_jadwal_tersedia(
     _current_user=Depends(require_permissions(VIEW_SCHEDULES, MANAGE_SCHEDULES)),
 ):
     """Return available schedules."""
-    return service.list_jadwal_tersedia(
-        db,
+    return await run_db(
+        service.list_jadwal_tersedia,
         page=page,
         limit=limit,
         id_tempat=id_tempat,
@@ -115,13 +112,12 @@ def list_jadwal_tersedia(
     description="Membuat jadwal untuk tempat yang sudah ada. Membutuhkan permission manage_schedules.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_jadwal(
+async def create_jadwal(
     payload: JadwalCreate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_SCHEDULES)),
 ):
     """Create a schedule."""
-    return service.create_jadwal(db, payload)
+    return await run_db(service.create_jadwal, payload, serializer=JadwalRead)
 
 
 @router.patch(
@@ -131,14 +127,13 @@ def create_jadwal(
     description="Memperbarui sebagian data jadwal berdasarkan ID. Membutuhkan permission manage_schedules.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_jadwal(
+async def update_jadwal(
     jadwal_id: int,
     payload: JadwalUpdate,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_SCHEDULES)),
 ):
     """Patch schedule data."""
-    return service.update_jadwal(db, jadwal_id, payload)
+    return await run_db(service.update_jadwal, jadwal_id, payload, serializer=JadwalRead)
 
 
 @router.delete(
@@ -148,10 +143,9 @@ def update_jadwal(
     description="Menghapus jadwal berdasarkan ID. Membutuhkan permission manage_schedules.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def delete_jadwal(
+async def delete_jadwal(
     jadwal_id: int,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_SCHEDULES)),
 ):
     """Delete a schedule."""
-    service.delete_jadwal(db, jadwal_id)
+    await run_db(service.delete_jadwal, jadwal_id)

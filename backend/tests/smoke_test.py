@@ -28,7 +28,7 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertNotIn("delete", schema["paths"]["/api/laporan/{laporan_id}"])
         self.assertIn("HTTPBearer", schema["components"]["securitySchemes"])
         reservasi_response = schema["paths"]["/api/reservasi/"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
-        self.assertIn("PaginatedResponse_ReservasiRead_", reservasi_response["$ref"])
+        self.assertIn("PaginatedResponse_ReservasiListRead_", reservasi_response["$ref"])
 
     def test_jwt_access_token_round_trip(self) -> None:
         token, expires_at = create_access_token(
@@ -52,6 +52,8 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertTrue(hashed_password.startswith("$2b$"))
         self.assertTrue(verify_password("Password123", hashed_password))
         self.assertFalse(verify_password("WrongPassword123", hashed_password))
+        self.assertFalse(verify_password("Password123", "Password123"))
+        self.assertFalse(verify_password("Password123", "pbkdf2_sha512$310000$salt$digest"))
         self.assertFalse(needs_password_rehash(hashed_password))
         self.assertTrue(needs_password_rehash("Password123"))
 

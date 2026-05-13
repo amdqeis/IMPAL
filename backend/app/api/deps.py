@@ -1,20 +1,24 @@
 from collections.abc import Callable, Generator
-from typing import Annotated
+from functools import partial
+from typing import Annotated, Any, TypeVar
 
+from anyio import to_thread
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import ExpiredSignatureError, JWTError
+from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.core.security import decode_access_token
-from app.db.session import get_db
-from app.models import User
+from app.db.session import SessionLocal, get_db
+from app.models import Role, User
 from app.services.permissions import get_default_permissions_for_roles
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
+T = TypeVar("T")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -22,6 +26,32 @@ def get_db_session() -> Generator[Session, None, None]:
 
 
 DbSession = Annotated[Session, Depends(get_db_session)]
+
+
+def _run_with_db(
+    func: Callable[..., T],
+    serializer: type[BaseModel] | None,
+    *args: Any,
+    **kwargs: Any,
+) -> T | BaseModel | None:
+    db = SessionLocal()
+    try:
+        result = func(db, *args, **kwargs)
+        if serializer is not None and result is not None:
+            return serializer.model_validate(result)
+        return result
+    finally:
+        db.close()
+
+
+async def run_db(
+    func: Callable[..., T],
+    *args: Any,
+    serializer: type[BaseModel] | None = None,
+    **kwargs: Any,
+) -> T | BaseModel | None:
+    """Run blocking SQLAlchemy work outside the event loop."""
+    return await to_thread.run_sync(partial(_run_with_db, func, serializer, *args, **kwargs))
 
 
 def get_current_user(
@@ -72,7 +102,11 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 
-    user = db.scalar(select(User).where(User.id_user == user_id))
+    user = db.scalar(
+        select(User)
+        .options(selectinload(User.roles).selectinload(Role.permissions))
+        .where(User.id_user == user_id)
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,7 +117,20 @@ def get_current_user(
     return user
 
 
-CurrentUser = Annotated[User, Depends(get_current_user)]
+def _get_current_user_with_db(
+    db: Session,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> User:
+    return get_current_user(credentials, db)
+
+
+async def get_current_user_async(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> User:
+    return await run_db(_get_current_user_with_db, credentials)
+
+
+CurrentUser = Annotated[User, Depends(get_current_user_async)]
 
 
 def get_user_permissions(user: User) -> set[str]:

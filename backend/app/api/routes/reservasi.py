@@ -3,9 +3,9 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import DbSession, require_permissions
+from app.api.deps import require_permissions, run_db
 from app.models import User
-from app.schemas import COMMON_ERROR_RESPONSES, PaginatedResponse, ReservasiCreate, ReservasiRead, ReservasiUpdateStatus
+from app.schemas import COMMON_ERROR_RESPONSES, PaginatedResponse, ReservasiCreate, ReservasiListRead, ReservasiRead, ReservasiUpdateStatus
 from app.services import reservasi as service
 from app.services.permissions import CREATE_RESERVATIONS, MANAGE_RESERVATIONS, VIEW_RESERVATIONS
 
@@ -15,13 +15,12 @@ router = APIRouter(prefix="/reservasi", tags=["4. Reservasi"])
 
 @router.get(
     "/",
-    response_model=PaginatedResponse[ReservasiRead],
+    response_model=PaginatedResponse[ReservasiListRead],
     summary="List reservasi",
     description="Mengambil daftar reservasi. User biasa hanya mendapat reservasi miliknya sendiri; manage_reservations dapat melihat semua.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def list_reservasi(
-    db: DbSession,
+async def list_reservasi(
     current_user: User = Depends(require_permissions(VIEW_RESERVATIONS, MANAGE_RESERVATIONS)),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -38,8 +37,8 @@ def list_reservasi(
     sort_order: Literal["asc", "desc"] = "asc",
 ):
     """Return reservations scoped by permission."""
-    return service.list_reservasi(
-        db,
+    return await run_db(
+        service.list_reservasi,
         current_user=current_user,
         page=page,
         limit=limit,
@@ -65,13 +64,12 @@ def list_reservasi(
     description="Membuat reservasi baru. User biasa hanya boleh membuat reservasi untuk dirinya sendiri.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def create_reservasi(
+async def create_reservasi(
     payload: ReservasiCreate,
-    db: DbSession,
     current_user: User = Depends(require_permissions(CREATE_RESERVATIONS, MANAGE_RESERVATIONS)),
 ):
     """Create a reservation."""
-    return service.create_reservasi(db, payload, current_user=current_user)
+    return await run_db(service.create_reservasi, payload, current_user=current_user, serializer=ReservasiRead)
 
 
 @router.patch(
@@ -81,11 +79,10 @@ def create_reservasi(
     description="Mengubah status reservasi. Membutuhkan permission manage_reservations.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def update_status_reservasi(
+async def update_status_reservasi(
     reservasi_id: int,
     payload: ReservasiUpdateStatus,
-    db: DbSession,
     _current_user=Depends(require_permissions(MANAGE_RESERVATIONS)),
 ):
     """Update reservation status."""
-    return service.update_status_reservasi(db, reservasi_id, payload)
+    return await run_db(service.update_status_reservasi, reservasi_id, payload, serializer=ReservasiRead)
