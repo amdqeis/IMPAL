@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -8,6 +8,10 @@ from .base import Base
 
 class Laporan(Base):
     __tablename__ = "laporan"
+    __table_args__ = (
+        Index("ix_laporan_tipe", "tipe"),
+        Index("ix_laporan_dibuat_oleh", "dibuat_oleh"),
+    )
 
     id_laporan: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     tipe: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -25,4 +29,3 @@ class Laporan(Base):
 
     def __repr__(self) -> str:
         return f"Laporan(id_laporan={self.id_laporan!r}, tipe={self.tipe!r})"
-

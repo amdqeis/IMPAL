@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, status
+from datetime import date
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import DbSession, require_permissions
 from app.models import User
-from app.schemas import COMMON_ERROR_RESPONSES, ReservasiCreate, ReservasiRead, ReservasiUpdateStatus
+from app.schemas import COMMON_ERROR_RESPONSES, PaginatedResponse, ReservasiCreate, ReservasiRead, ReservasiUpdateStatus
 from app.services import reservasi as service
 from app.services.permissions import CREATE_RESERVATIONS, MANAGE_RESERVATIONS, VIEW_RESERVATIONS
 
@@ -12,7 +15,7 @@ router = APIRouter(prefix="/reservasi", tags=["4. Reservasi"])
 
 @router.get(
     "/",
-    response_model=list[ReservasiRead],
+    response_model=PaginatedResponse[ReservasiRead],
     summary="List reservasi",
     description="Mengambil daftar reservasi. User biasa hanya mendapat reservasi miliknya sendiri; manage_reservations dapat melihat semua.",
     responses=COMMON_ERROR_RESPONSES,
@@ -20,17 +23,37 @@ router = APIRouter(prefix="/reservasi", tags=["4. Reservasi"])
 def list_reservasi(
     db: DbSession,
     current_user: User = Depends(require_permissions(VIEW_RESERVATIONS, MANAGE_RESERVATIONS)),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
     id_user: int | None = None,
     id_cabang: int | None = None,
+    id_tempat: int | None = None,
+    id_jadwal: int | None = None,
     status_reservasi: str | None = None,
+    tanggal: date | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    search: str | None = Query(default=None, min_length=1, max_length=255),
+    sort_by: str | None = Query(default=None),
+    sort_order: Literal["asc", "desc"] = "asc",
 ):
     """Return reservations scoped by permission."""
     return service.list_reservasi(
         db,
         current_user=current_user,
+        page=page,
+        limit=limit,
         id_user=id_user,
         id_cabang=id_cabang,
+        id_tempat=id_tempat,
+        id_jadwal=id_jadwal,
         status_reservasi=status_reservasi,
+        tanggal=tanggal,
+        start_date=start_date,
+        end_date=end_date,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
 

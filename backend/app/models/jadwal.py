@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import time
 
-from sqlalchemy import ForeignKey, Time
+from sqlalchemy import ForeignKey, Index, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -10,6 +10,10 @@ from .base import Base
 
 class Jadwal(Base):
     __tablename__ = "jadwal"
+    __table_args__ = (
+        Index("ix_jadwal_id_tempat", "id_tempat"),
+        Index("ix_jadwal_id_tempat_jam_mulai", "id_tempat", "jam_mulai"),
+    )
 
     id_jadwal: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     id_tempat: Mapped[int] = mapped_column(

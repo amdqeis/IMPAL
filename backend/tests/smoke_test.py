@@ -27,6 +27,8 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertIn("patch", schema["paths"]["/api/laporan/{laporan_id}"])
         self.assertNotIn("delete", schema["paths"]["/api/laporan/{laporan_id}"])
         self.assertIn("HTTPBearer", schema["components"]["securitySchemes"])
+        reservasi_response = schema["paths"]["/api/reservasi/"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+        self.assertIn("PaginatedResponse_ReservasiRead_", reservasi_response["$ref"])
 
     def test_jwt_access_token_round_trip(self) -> None:
         token, expires_at = create_access_token(

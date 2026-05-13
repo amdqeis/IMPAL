@@ -8,12 +8,33 @@ from sqlalchemy.orm import Session
 from app.models import Cabang, Laporan, Payment, Reservasi, Tempat, User
 from app.repositories import laporan as repo
 from app.repositories import users as user_repo
+from app.schemas.common import PaginatedResponse, build_paginated_response
 from app.schemas.laporan import LaporanCreate, LaporanUpdate
 
 
-def list_laporan(db: Session) -> list[Laporan]:
-    """Return all reports."""
-    return repo.list_laporan(db)
+def list_laporan(
+    db: Session,
+    *,
+    page: int,
+    limit: int,
+    search: str | None = None,
+    tipe: str | None = None,
+    dibuat_oleh: int | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+) -> PaginatedResponse[Laporan]:
+    """Return reports using database pagination."""
+    items, total_items = repo.list_laporan(
+        db,
+        page=page,
+        limit=limit,
+        search=search,
+        tipe=tipe,
+        dibuat_oleh=dibuat_oleh,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
 
 
 def create_laporan(db: Session, payload: LaporanCreate, *, dibuat_oleh: int | None = None) -> Laporan:

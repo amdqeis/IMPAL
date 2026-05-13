@@ -21,6 +21,11 @@ class Reservasi(Base):
             postgresql_where=text("status IN ('pending', 'confirmed')"),
             sqlite_where=text("status IN ('pending', 'confirmed')"),
         ),
+        Index("ix_reservasi_status", "status"),
+        Index("ix_reservasi_tanggal", "tanggal"),
+        Index("ix_reservasi_id_user", "id_user"),
+        Index("ix_reservasi_id_tempat", "id_tempat"),
+        Index("ix_reservasi_id_jadwal", "id_jadwal"),
     )
 
     id_reservasi: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

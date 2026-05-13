@@ -10,22 +10,53 @@ from app.repositories import jadwal as jadwal_repo
 from app.repositories import master_data as master_repo
 from app.repositories import reservasi as repo
 from app.repositories import users as user_repo
+from app.repositories.query_helpers import validate_value
+from app.schemas.common import PaginatedResponse, build_paginated_response
 from app.schemas.reservasi import ReservasiCreate, ReservasiUpdateStatus
 from app.services.permissions import MANAGE_RESERVATIONS
+
+RESERVASI_STATUSES = {"pending", "confirmed", "completed", "cancelled", "declined", "no_show", "expired", "refunded"}
 
 
 def list_reservasi(
     db: Session,
     *,
     current_user: User,
+    page: int,
+    limit: int,
     id_user: int | None = None,
     id_cabang: int | None = None,
+    id_tempat: int | None = None,
+    id_jadwal: int | None = None,
     status_reservasi: str | None = None,
-) -> list[Reservasi]:
+    tanggal: date | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+) -> PaginatedResponse[Reservasi]:
     """Return reservations; regular users are scoped to their own data."""
     if not has_permission(current_user, MANAGE_RESERVATIONS):
         id_user = current_user.id_user
-    return repo.list_reservasi(db, id_user=id_user, id_cabang=id_cabang, status_reservasi=status_reservasi)
+    normalized_status = validate_value(status_reservasi, RESERVASI_STATUSES, field_name="status_reservasi")
+    items, total_items = repo.list_reservasi(
+        db,
+        page=page,
+        limit=limit,
+        id_user=id_user,
+        id_cabang=id_cabang,
+        id_tempat=id_tempat,
+        id_jadwal=id_jadwal,
+        status_reservasi=normalized_status,
+        tanggal=tanggal,
+        start_date=start_date,
+        end_date=end_date,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
 
 
 def _assert_tanggal_not_past(tanggal: date) -> None:

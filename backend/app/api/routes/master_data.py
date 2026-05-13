@@ -1,7 +1,18 @@
-from fastapi import APIRouter, Depends, status
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import DbSession, require_permissions
-from app.schemas import COMMON_ERROR_RESPONSES, CabangCreate, CabangRead, CabangUpdate, TempatCreate, TempatRead, TempatUpdate
+from app.schemas import (
+    COMMON_ERROR_RESPONSES,
+    CabangCreate,
+    CabangRead,
+    CabangUpdate,
+    PaginatedResponse,
+    TempatCreate,
+    TempatRead,
+    TempatUpdate,
+)
 from app.services import master_data as service
 from app.services.permissions import MANAGE_BRANCHES, MANAGE_TABLES, VIEW_LOCATIONS
 
@@ -11,17 +22,29 @@ router = APIRouter(prefix="/master-data", tags=["2. Kelola Cabang & Tempat"])
 
 @router.get(
     "/cabang",
-    response_model=list[CabangRead],
+    response_model=PaginatedResponse[CabangRead],
     summary="List cabang",
     description="Mengambil daftar seluruh cabang. Membutuhkan permission view_locations atau permission kelola lokasi.",
     responses=COMMON_ERROR_RESPONSES,
 )
 def list_cabang(
     db: DbSession,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None, min_length=1, max_length=255),
+    sort_by: str | None = Query(default=None),
+    sort_order: Literal["asc", "desc"] = "asc",
     _current_user=Depends(require_permissions(VIEW_LOCATIONS, MANAGE_BRANCHES, MANAGE_TABLES)),
 ):
-    """Return all branches."""
-    return service.list_cabang(db)
+    """Return branches using database pagination."""
+    return service.list_cabang(
+        db,
+        page=page,
+        limit=limit,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
 
 
 @router.post(
@@ -76,19 +99,33 @@ def delete_cabang(
 
 @router.get(
     "/tempat",
-    response_model=list[TempatRead],
+    response_model=PaginatedResponse[TempatRead],
     summary="List tempat",
     description="Mengambil daftar meja/tempat, dapat difilter berdasarkan cabang dan status. Membutuhkan permission view_locations atau kelola tempat.",
     responses=COMMON_ERROR_RESPONSES,
 )
 def list_tempat(
     db: DbSession,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
     id_cabang: int | None = None,
     status_tempat: str | None = None,
+    search: str | None = Query(default=None, min_length=1, max_length=255),
+    sort_by: str | None = Query(default=None),
+    sort_order: Literal["asc", "desc"] = "asc",
     _current_user=Depends(require_permissions(VIEW_LOCATIONS, MANAGE_BRANCHES, MANAGE_TABLES)),
 ):
-    """Return tables with optional filters."""
-    return service.list_tempat(db, id_cabang=id_cabang, status_tempat=status_tempat)
+    """Return tables with optional filters using database pagination."""
+    return service.list_tempat(
+        db,
+        page=page,
+        limit=limit,
+        id_cabang=id_cabang,
+        status_tempat=status_tempat,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
 
 
 @router.post(

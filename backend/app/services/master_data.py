@@ -3,12 +3,33 @@ from sqlalchemy.orm import Session
 
 from app.models import Cabang, Tempat
 from app.repositories import master_data as repo
+from app.repositories.query_helpers import validate_value
+from app.schemas.common import PaginatedResponse, build_paginated_response
 from app.schemas.master_data import CabangCreate, CabangUpdate, TempatCreate, TempatUpdate
 
 
-def list_cabang(db: Session) -> list[Cabang]:
-    """Return all branches."""
-    return repo.list_cabang(db)
+TEMPAT_STATUSES = {"available", "occupied", "maintenance", "booked", "unavailable"}
+
+
+def list_cabang(
+    db: Session,
+    *,
+    page: int,
+    limit: int,
+    search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+) -> PaginatedResponse[Cabang]:
+    """Return branches using database pagination."""
+    items, total_items = repo.list_cabang(
+        db,
+        page=page,
+        limit=limit,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
 
 
 def create_cabang(db: Session, payload: CabangCreate) -> Cabang:
@@ -44,9 +65,30 @@ def delete_cabang(db: Session, cabang_id: int) -> None:
     db.commit()
 
 
-def list_tempat(db: Session, *, id_cabang: int | None = None, status_tempat: str | None = None) -> list[Tempat]:
-    """Return tables filtered by branch or table status."""
-    return repo.list_tempat(db, id_cabang=id_cabang, status_tempat=status_tempat)
+def list_tempat(
+    db: Session,
+    *,
+    page: int,
+    limit: int,
+    id_cabang: int | None = None,
+    status_tempat: str | None = None,
+    search: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+) -> PaginatedResponse[Tempat]:
+    """Return tables filtered by branch or table status using database pagination."""
+    normalized_status = validate_value(status_tempat, TEMPAT_STATUSES, field_name="status_tempat")
+    items, total_items = repo.list_tempat(
+        db,
+        page=page,
+        limit=limit,
+        id_cabang=id_cabang,
+        status_tempat=normalized_status,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
 
 
 def create_tempat(db: Session, payload: TempatCreate) -> Tempat:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric, String
+from sqlalchemy import ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -10,6 +10,10 @@ from .base import Base
 
 class Payment(Base):
     __tablename__ = "payments"
+    __table_args__ = (
+        Index("ix_payments_status", "status"),
+        Index("ix_payments_id_reservasi", "id_reservasi"),
+    )
 
     id_payment: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     id_reservasi: Mapped[int] = mapped_column(

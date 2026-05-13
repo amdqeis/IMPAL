@@ -1,9 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, DbSession, require_permissions
 from app.models import User
 from app.repositories import users as user_repo
-from app.schemas import AuthResponse, COMMON_ERROR_RESPONSES, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserUpdate
+from app.schemas import (
+    AuthResponse,
+    COMMON_ERROR_RESPONSES,
+    LoginRequest,
+    LogoutResponse,
+    PaginatedResponse,
+    UserAccessRead,
+    UserCreate,
+    UserUpdate,
+)
 from app.services import auth as auth_service
 from app.services.permissions import MANAGE_ROLES
 
@@ -80,17 +91,31 @@ def get_me(current_user: CurrentUser) -> AuthResponse:
 
 @router.get(
     "/users",
-    response_model=list[UserAccessRead],
+    response_model=PaginatedResponse[UserAccessRead],
     summary="List users",
     description="Mengembalikan daftar user beserta role dan permission. Membutuhkan permission manage_users.",
     responses=COMMON_ERROR_RESPONSES,
 )
 def list_users(
     db: DbSession,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None, min_length=1, max_length=255),
+    role: str | None = Query(default=None),
+    sort_by: str | None = Query(default=None),
+    sort_order: Literal["asc", "desc"] = "asc",
     _current_user=Depends(require_admin_user_manager),
-) -> list[UserAccessRead]:
+) -> PaginatedResponse[UserAccessRead]:
     """Return all users for admin management."""
-    return auth_service.list_users(db)
+    return auth_service.list_users(
+        db,
+        page=page,
+        limit=limit,
+        search=search,
+        role=role,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
 
 
 @router.get(

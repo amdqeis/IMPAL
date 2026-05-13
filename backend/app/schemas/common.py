@@ -1,8 +1,47 @@
+from math import ceil
+from typing import Generic, TypeVar
+
 from pydantic import BaseModel, Field
 
 
 class ErrorResponse(BaseModel):
     detail: str = Field(..., examples=["Resource tidak ditemukan"])
+
+
+class PaginationMeta(BaseModel):
+    page: int
+    limit: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: list[T]
+    pagination: PaginationMeta
+
+
+def build_pagination_meta(*, page: int, limit: int, total_items: int) -> PaginationMeta:
+    total_pages = ceil(total_items / limit) if total_items else 0
+    return PaginationMeta(
+        page=page,
+        limit=limit,
+        total_items=total_items,
+        total_pages=total_pages,
+        has_next=page < total_pages,
+        has_prev=page > 1 and total_pages > 0,
+    )
+
+
+def build_paginated_response(data: list[T], *, page: int, limit: int, total_items: int) -> PaginatedResponse[T]:
+    return PaginatedResponse(
+        data=data,
+        pagination=build_pagination_meta(page=page, limit=limit, total_items=total_items),
+    )
 
 
 COMMON_ERROR_RESPONSES = {

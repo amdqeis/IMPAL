@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import String
+from sqlalchemy import Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.security import hash_password, verify_password
@@ -10,6 +10,10 @@ from .base import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index("ix_users_nama", "nama"),
+        Index("ix_users_email", "email"),
+    )
 
     id_user: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     nama: Mapped[str] = mapped_column(String(255), nullable=False)

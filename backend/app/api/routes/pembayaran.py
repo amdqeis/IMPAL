@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, status
+from datetime import date
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import DbSession, require_permissions
 from app.models import User
 from app.schemas import (
     COMMON_ERROR_RESPONSES,
+    PaginatedResponse,
     PaymentCreate,
     PaymentLogCreate,
     PaymentLogRead,
@@ -22,7 +26,7 @@ router = APIRouter(prefix="/pembayaran", tags=["5. Pembayaran"])
 
 @router.get(
     "/",
-    response_model=list[PaymentRead],
+    response_model=PaginatedResponse[PaymentRead],
     summary="List pembayaran",
     description="Mengambil daftar pembayaran. User biasa hanya melihat pembayaran dari reservasinya sendiri; manage_payments dapat melihat semua.",
     responses=COMMON_ERROR_RESPONSES,
@@ -30,17 +34,31 @@ router = APIRouter(prefix="/pembayaran", tags=["5. Pembayaran"])
 def list_pembayaran(
     db: DbSession,
     current_user: User = Depends(require_permissions(VIEW_PAYMENTS, MANAGE_PAYMENTS)),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
     id_reservasi: int | None = None,
     id_cabang: int | None = None,
     status_pembayaran: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    search: str | None = Query(default=None, min_length=1, max_length=255),
+    sort_by: str | None = Query(default=None),
+    sort_order: Literal["asc", "desc"] = "asc",
 ):
     """Return payments scoped by permission."""
     return service.list_pembayaran(
         db,
         current_user=current_user,
+        page=page,
+        limit=limit,
         id_reservasi=id_reservasi,
         id_cabang=id_cabang,
         status_pembayaran=status_pembayaran,
+        start_date=start_date,
+        end_date=end_date,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
 

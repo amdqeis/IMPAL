@@ -7,9 +7,13 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.models import User, UserRole
+from app.repositories.query_helpers import validate_value
+from app.schemas.common import PaginatedResponse, build_paginated_response
 from app.repositories import users as user_repo
 from app.schemas.auth import AuthResponse, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserRead, UserUpdate
 from app.services.permissions import get_default_permissions_for_roles
+
+ROLE_FILTERS = {"admin", "owner", "user"}
 
 
 def _role_names(user: User) -> list[str]:
@@ -126,8 +130,32 @@ def get_user_access(db: Session, user_id: int) -> AuthResponse:
     return build_auth_response(user, message="Akses user berhasil dimuat")
 
 
-def list_users(db: Session) -> list[UserAccessRead]:
-    return [build_user_access(user) for user in user_repo.list_users(db)]
+def list_users(
+    db: Session,
+    *,
+    page: int,
+    limit: int,
+    search: str | None = None,
+    role: str | None = None,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+) -> PaginatedResponse[UserAccessRead]:
+    normalized_role = validate_value(role, ROLE_FILTERS, field_name="role")
+    users, total_items = user_repo.list_users(
+        db,
+        page=page,
+        limit=limit,
+        search=search,
+        role=normalized_role,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return build_paginated_response(
+        [build_user_access(user) for user in users],
+        page=page,
+        limit=limit,
+        total_items=total_items,
+    )
 
 
 def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserAccessRead:
