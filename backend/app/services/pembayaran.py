@@ -11,6 +11,7 @@ from app.repositories.query_helpers import validate_value
 from app.schemas.common import PaginatedResponse, build_paginated_response
 from app.schemas.pembayaran import (
     PaymentCreate,
+    PaymentListRead,
     PaymentLogCreate,
     PaymentUpdateStatus,
     RefundCreate,
@@ -44,7 +45,7 @@ def list_pembayaran(
     search: str | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Payment]:
+) -> PaginatedResponse[PaymentListRead]:
     """Return payments; regular users only see payments for their own reservations."""
     id_user = None if has_permission(current_user, MANAGE_PAYMENTS) else current_user.id_user
     normalized_status = validate_value(status_pembayaran, PAYMENT_STATUSES, field_name="status_pembayaran")
@@ -62,7 +63,8 @@ def list_pembayaran(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [PaymentListRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def create_pembayaran(db: Session, payload: PaymentCreate, *, current_user: User) -> Payment:

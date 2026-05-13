@@ -12,7 +12,7 @@ from app.repositories import reservasi as repo
 from app.repositories import users as user_repo
 from app.repositories.query_helpers import validate_value
 from app.schemas.common import PaginatedResponse, build_paginated_response
-from app.schemas.reservasi import ReservasiCreate, ReservasiUpdateStatus
+from app.schemas.reservasi import ReservasiCreate, ReservasiListRead, ReservasiUpdateStatus
 from app.services.permissions import MANAGE_RESERVATIONS
 
 RESERVASI_STATUSES = {"pending", "confirmed", "completed", "cancelled", "declined", "no_show", "expired", "refunded"}
@@ -35,7 +35,7 @@ def list_reservasi(
     search: str | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Reservasi]:
+) -> PaginatedResponse[ReservasiListRead]:
     """Return reservations; regular users are scoped to their own data."""
     if not has_permission(current_user, MANAGE_RESERVATIONS):
         id_user = current_user.id_user
@@ -56,7 +56,8 @@ def list_reservasi(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [ReservasiListRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def _assert_tanggal_not_past(tanggal: date) -> None:

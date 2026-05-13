@@ -1,9 +1,28 @@
 def create_app():
+    import logging
+    from time import perf_counter
+
     from fastapi import FastAPI
+    from fastapi import Request
     from fastapi.middleware.cors import CORSMiddleware
 
     from app.api import api_router
     from app.core.config import settings
+
+    request_logger = logging.getLogger("app.request")
+    if not request_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        request_logger.addHandler(handler)
+    request_logger.setLevel(logging.INFO)
+    request_logger.propagate = False
+    db_logger = logging.getLogger("app.db")
+    if not db_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        db_logger.addHandler(handler)
+    db_logger.setLevel(logging.INFO)
+    db_logger.propagate = False
 
     app = FastAPI(
         title=settings.app_name,
@@ -25,6 +44,20 @@ def create_app():
         )
 
     app.include_router(api_router, prefix="/api")
+
+    @app.middleware("http")
+    async def log_request_duration(request: Request, call_next):
+        started_at = perf_counter()
+        response = await call_next(request)
+        duration_ms = (perf_counter() - started_at) * 1000
+        request_logger.info(
+            "%s %s %s response_total %.2fms",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response
 
     @app.get(
         "/",

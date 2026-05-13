@@ -37,6 +37,7 @@ class Config:
             f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
+        self.SQLALCHEMY_ECHO = _to_bool(os.getenv("SQLALCHEMY_ECHO"), default=False)
         self.SQLALCHEMY_TRACK_MODIFICATIONS = False
 
         self.SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
@@ -74,6 +75,10 @@ class Config:
     @property
     def app_debug(self) -> bool:
         return self.DEBUG
+
+    @property
+    def sqlalchemy_echo(self) -> bool:
+        return self.SQLALCHEMY_ECHO
 
     @property
     def jwt_algorithm(self) -> str:
