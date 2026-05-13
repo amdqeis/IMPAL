@@ -11,23 +11,38 @@ from app.repositories.query_helpers import validate_value
 from app.schemas.common import PaginatedResponse, build_paginated_response
 from app.repositories import users as user_repo
 from app.schemas.auth import AuthResponse, LoginRequest, LogoutResponse, UserAccessRead, UserCreate, UserRead, UserUpdate
-from app.services.permissions import get_default_permissions_for_roles
+from app.services.auth_claims import (
+    AuthUserLike,
+    auth_user_to_user_read,
+    extract_auth_claims,
+    permission_names_from_user,
+    role_names_from_user,
+)
 
 ROLE_FILTERS = {"admin", "owner", "user"}
 
 
-def _role_names(user: User) -> list[str]:
-    return [role.nama_role for role in user.roles]
+def _role_names(user: AuthUserLike) -> list[str]:
+    role_values = getattr(user, "roles", [])
+    names: set[str] = set()
+    for role in role_values:
+        names.add(getattr(role, "nama_role", str(role)))
+    return sorted(names)
 
 
-def _permission_names(user: User) -> list[str]:
-    role_names = _role_names(user)
-    stored_permissions = {permission.nama_permission for role in user.roles for permission in role.permissions}
-    return sorted(stored_permissions | get_default_permissions_for_roles(role_names))
+def _permission_names(user: AuthUserLike) -> list[str]:
+    permission_values = getattr(user, "permissions", [])
+    permissions = {
+        getattr(permission, "nama_permission", str(permission))
+        for permission in permission_values
+    }
+    if permissions:
+        return sorted(permissions)
+    return permission_names_from_user(user)
 
 
 def build_auth_response(
-    user: User,
+    user: AuthUserLike,
     *,
     message: str,
     include_token: bool = False,
@@ -48,6 +63,8 @@ def build_auth_response(
             expires_delta=expires_delta,
             claims={
                 "email": user.email,
+                "name": user.nama,
+                "no_hp": user.no_hp,
                 "roles": roles,
                 "permissions": permissions,
             },
@@ -55,7 +72,7 @@ def build_auth_response(
         expires_in = int(expires_delta.total_seconds())
 
     return AuthResponse(
-        user=UserRead.model_validate(user),
+        user=auth_user_to_user_read(user),
         roles=roles,
         permissions=permissions,
         token=token,
@@ -106,7 +123,8 @@ def register_user(db: Session, payload: UserCreate) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email sudah terdaftar") from exc
 
     db.refresh(user)
-    return build_auth_response(user, message="Registrasi berhasil", include_token=True)
+    registered_user = user_repo.get_user_by_id_with_access(db, user.id_user) or user
+    return build_auth_response(registered_user, message="Registrasi berhasil", include_token=True)
 
 def login_user(db: Session, payload: LoginRequest) -> AuthResponse:
     """Authenticate a user and issue a JWT access token."""
@@ -124,7 +142,7 @@ def logout_user() -> LogoutResponse:
 
 def get_user_access(db: Session, user_id: int) -> AuthResponse:
     """Return roles and permissions for a user."""
-    user = user_repo.get_user_by_id(db, user_id)
+    user = user_repo.get_user_by_id_with_access(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
     return build_auth_response(user, message="Akses user berhasil dimuat")
@@ -159,7 +177,7 @@ def list_users(
 
 
 def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserAccessRead:
-    user = user_repo.get_user_by_id(db, user_id)
+    user = user_repo.get_user_by_id_with_access(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
 
@@ -174,7 +192,8 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserAccessRea
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email sudah terdaftar") from exc
 
     db.refresh(user)
-    return build_user_access(user)
+    refreshed_user = user_repo.get_user_by_id_with_access(db, user_id) or user
+    return build_user_access(refreshed_user)
 
 
 def delete_user(db: Session, user_id: int) -> None:

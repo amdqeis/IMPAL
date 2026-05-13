@@ -3,18 +3,37 @@ import unittest
 
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import create_engine
+from starlette.requests import Request
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_current_user, require_permissions
+from app.api.deps import get_current_session_user, get_current_user, require_permissions
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.models import Base, Cabang, Jadwal, Permission, Role, Tempat, User, UserRole
 from app.schemas.auth import LoginRequest, UserCreate
+from app.services.auth_claims import AuthenticatedUser
+from app.api.routes.auth import get_me, logout
 from app.schemas.reservasi import ReservasiCreate
 from app.services import auth as auth_service
 from app.services import reservasi as reservasi_service
+
+
+class QueryCounter:
+    def __init__(self, engine):
+        self.engine = engine
+        self.count = 0
+
+    def before_cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
+        self.count += 1
+
+    def __enter__(self):
+        event.listen(self.engine, "before_cursor_execute", self.before_cursor_execute)
+        return self
+
+    def __exit__(self, *args):
+        event.remove(self.engine, "before_cursor_execute", self.before_cursor_execute)
 
 
 class AuthRbacTest(unittest.TestCase):
@@ -55,6 +74,9 @@ class AuthRbacTest(unittest.TestCase):
         self.db.refresh(user)
         return user
 
+    def _request_with_session(self, session_data: dict) -> Request:
+        return Request({"type": "http", "method": "GET", "path": "/", "headers": [], "session": session_data})
+
     def _create_jadwal(self) -> Jadwal:
         cabang = Cabang(nama="Cabang Test", lokasi="Jakarta")
         self.db.add(cabang)
@@ -87,6 +109,90 @@ class AuthRbacTest(unittest.TestCase):
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=registered.access_token)
         current_user = get_current_user(credentials, self.db)
         self.assertEqual(current_user.email, "baru@example.com")
+
+    def test_login_eager_loads_roles_permissions_with_constant_query_count(self) -> None:
+        user = self._create_user("nplusone@example.com", role=self.admin_role)
+        for index in range(20):
+            self.db.add(Permission(id_role=self.admin_role.id_role, nama_permission=f"admin_extra_{index}"))
+        self.db.commit()
+        email = user.email
+
+        with QueryCounter(self.engine) as counter:
+            logged_in = auth_service.login_user(
+                self.db,
+                LoginRequest(email=email, password="Password123"),
+            )
+
+        self.assertIn("manage_reservations", logged_in.permissions)
+        self.assertIn("admin_extra_19", logged_in.permissions)
+        self.assertLessEqual(counter.count, 4)
+
+    def test_jwt_claim_authorization_does_not_query_roles_permissions(self) -> None:
+        token, _ = create_access_token(
+            subject="999",
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.jwt_algorithm,
+            expires_delta=timedelta(minutes=5),
+            claims={
+                "email": "claim@example.com",
+                "name": "Claim User",
+                "no_hp": "081200000099",
+                "roles": ["user"],
+                "permissions": ["view_reservations"],
+            },
+        )
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+        with QueryCounter(self.engine) as counter:
+            current_user = get_current_user(credentials, self.db)
+
+        self.assertEqual(current_user.id_user, 999)
+        self.assertEqual(current_user.email, "claim@example.com")
+        self.assertEqual(counter.count, 0)
+
+    def test_session_authorization_does_not_query_roles_permissions(self) -> None:
+        request = self._request_with_session(
+            {
+                "user_id": 123,
+                "email": "session@example.com",
+                "name": "Session User",
+                "no_hp": "081200000123",
+                "roles": ["user"],
+                "permissions": ["view_reservations"],
+            }
+        )
+
+        with QueryCounter(self.engine) as counter:
+            current_user = get_current_session_user(request, None, self.db)
+
+        self.assertEqual(current_user.id_user, 123)
+        self.assertEqual(current_user.email, "session@example.com")
+        self.assertEqual(counter.count, 0)
+
+    def test_me_response_shape_from_session_user(self) -> None:
+        current_user = AuthenticatedUser(
+            id_user=88,
+            email="me@example.com",
+            nama="Me User",
+            no_hp="081200000088",
+            role_names=["user"],
+            permissions=["view_reservations"],
+        )
+
+        response = get_me(current_user)
+
+        self.assertEqual(response.user.id_user, 88)
+        self.assertIn("user", response.roles)
+        self.assertIn("view_reservations", response.permissions)
+        self.assertIsNone(response.access_token)
+
+    def test_logout_clears_session(self) -> None:
+        request = self._request_with_session({"user_id": 10, "roles": ["user"], "permissions": ["view_reservations"]})
+
+        response = logout(request)
+
+        self.assertEqual(response.message, "Logout berhasil")
+        self.assertEqual(request.session, {})
 
     def test_logout_is_stateless_and_client_discards_jwt(self) -> None:
         user = self._create_user("logout@example.com")

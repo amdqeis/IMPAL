@@ -7,7 +7,7 @@ import bcrypt
 from jose import jwt
 
 
-BCRYPT_ROUNDS = 12
+BCRYPT_ROUNDS = 10
 _BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 
 
@@ -30,9 +30,6 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    if not hashed_password.startswith(_BCRYPT_PREFIXES):
-        return False
-
     try:
         return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
     except ValueError:
@@ -40,7 +37,15 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 
 def needs_password_rehash(hashed_password: str) -> bool:
-    return not hashed_password.startswith(_BCRYPT_PREFIXES)
+    if not hashed_password.startswith(_BCRYPT_PREFIXES):
+        return True
+
+    try:
+        rounds = int(hashed_password.split("$")[2])
+    except (IndexError, ValueError):
+        return True
+
+    return rounds != BCRYPT_ROUNDS
 
 
 def create_access_token(

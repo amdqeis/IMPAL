@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import case, desc, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, load_only, noload, selectinload
 
 from app.models import Cabang, Laporan, Payment, Reservasi, Tempat, User
 from app.repositories import laporan as repo
@@ -115,6 +115,23 @@ def _build_report_lines(db: Session, laporan: Laporan) -> list[str]:
     ).all()
     recent_reservations = db.scalars(
         select(Reservasi)
+        .options(
+            load_only(
+                Reservasi.id_reservasi,
+                Reservasi.id_user,
+                Reservasi.id_tempat,
+                Reservasi.tanggal,
+                Reservasi.status,
+                Reservasi.total_harga,
+            ),
+            selectinload(Reservasi.user).load_only(User.id_user, User.nama),
+            joinedload(Reservasi.tempat)
+            .load_only(Tempat.id_tempat, Tempat.nomor_meja, Tempat.id_cabang)
+            .joinedload(Tempat.cabang)
+            .load_only(Cabang.id_cabang, Cabang.nama),
+            noload(Reservasi.jadwal),
+            noload(Reservasi.payments),
+        )
         .order_by(desc(Reservasi.tanggal), desc(Reservasi.id_reservasi))
         .limit(12)
     ).all()

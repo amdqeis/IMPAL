@@ -20,6 +20,7 @@ class BackendSmokeTest(unittest.TestCase):
         self.assertIn("/api/jadwal/availability", schema["paths"])
         self.assertIn("/api/reservasi/", schema["paths"])
         self.assertIn("/api/pembayaran/", schema["paths"])
+        self.assertIn("/api/pembayaran/{payment_id}/dummy-confirm", schema["paths"])
         self.assertIn("/api/laporan/", schema["paths"])
         self.assertIn("get", schema["paths"]["/api/laporan/"])
         self.assertIn("post", schema["paths"]["/api/laporan/"])

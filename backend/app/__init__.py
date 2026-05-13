@@ -5,6 +5,7 @@ def create_app():
     from fastapi import FastAPI
     from fastapi import Request
     from fastapi.middleware.cors import CORSMiddleware
+    from starlette.middleware.sessions import SessionMiddleware
 
     from app.api import api_router
     from app.core.config import settings
@@ -42,6 +43,15 @@ def create_app():
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.SESSION_SECRET_KEY,
+        session_cookie="session",
+        max_age=settings.SESSION_MAX_AGE,
+        same_site=settings.SESSION_COOKIE_SAMESITE,
+        https_only=settings.SESSION_COOKIE_SECURE or settings.app_env == "production",
+    )
 
     app.include_router(api_router, prefix="/api")
 

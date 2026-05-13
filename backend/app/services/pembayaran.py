@@ -20,6 +20,9 @@ from app.schemas.pembayaran import (
 from app.services.permissions import MANAGE_PAYMENTS
 
 PAYMENT_STATUSES = {"pending", "paid", "unpaid", "failed", "refunded", "void", "expired"}
+DUMMY_CONFIRMABLE_PAYMENT_STATUSES = {"pending", "unpaid"}
+DUMMY_BLOCKED_RESERVATION_STATUSES = {"cancelled", "declined", "expired", "refunded", "no_show"}
+DUMMY_GATEWAY_RESPONSE = "dummy_gateway: payment confirmed"
 
 
 def _assert_reservasi_access(current_user: User, reservasi_user_id: int) -> None:
@@ -88,6 +91,39 @@ def update_status_pembayaran(db: Session, payment_id: int, payload: PaymentUpdat
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pembayaran tidak ditemukan")
 
     payment.status = payload.status
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
+def dummy_confirm_payment(db: Session, payment_id: int, *, current_user: User) -> Payment:
+    """Confirm a dummy QRIS payment while preserving user ownership checks."""
+    payment = repo.get_payment(db, payment_id)
+    if not payment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pembayaran tidak ditemukan")
+    _assert_payment_access(current_user, payment)
+
+    payment_status = payment.status.lower()
+    if payment_status == "paid":
+        return payment
+    if payment_status not in DUMMY_CONFIRMABLE_PAYMENT_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pembayaran tidak dapat dikonfirmasi dari status saat ini",
+        )
+
+    reservasi_status = payment.reservasi.status.lower()
+    if reservasi_status in DUMMY_BLOCKED_RESERVATION_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reservasi tidak dapat dibayar karena status tidak aktif",
+        )
+
+    payment.status = "paid"
+    if reservasi_status == "pending":
+        payment.reservasi.status = "confirmed"
+
+    db.add(PaymentLog(id_payment=payment.id_payment, response=DUMMY_GATEWAY_RESPONSE))
     db.commit()
     db.refresh(payment)
     return payment

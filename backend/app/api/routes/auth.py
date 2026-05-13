@@ -1,9 +1,8 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.api.deps import CurrentUser, require_permissions, run_db
-from app.models import User
 from app.repositories import users as user_repo
 from app.schemas import (
     AuthResponse,
@@ -16,22 +15,23 @@ from app.schemas import (
     UserUpdate,
 )
 from app.services import auth as auth_service
+from app.services.auth_claims import AuthenticatedUser, claims_from_auth_response, session_from_claims
 from app.services.permissions import MANAGE_ROLES
 
 
 router = APIRouter(prefix="/auth", tags=["1. Autentikasi"])
 
 
-def _role_names(user: User) -> set[str]:
-    return {role.nama_role.lower() for role in user.roles}
+def _role_names(user: AuthenticatedUser) -> set[str]:
+    return {str(role).lower() for role in user.roles}
 
 
-def _can_manage_users(user: User) -> bool:
+def _can_manage_users(user: AuthenticatedUser) -> bool:
     roles = _role_names(user)
     return "admin" in roles and "owner" not in roles
 
 
-def require_admin_user_manager(current_user: CurrentUser) -> User:
+def require_admin_user_manager(current_user: CurrentUser) -> AuthenticatedUser:
     if _can_manage_users(current_user):
         return current_user
     raise HTTPException(
@@ -48,9 +48,11 @@ def require_admin_user_manager(current_user: CurrentUser) -> User:
     description="Mendaftarkan user baru, meng-hash password, memberi role default user, dan mengembalikan JWT access token.",
     responses=COMMON_ERROR_RESPONSES,
 )
-async def register(payload: UserCreate) -> AuthResponse:
+async def register(payload: UserCreate, request: Request) -> AuthResponse:
     """Register a user and return access metadata."""
-    return await run_db(auth_service.register_user, payload)
+    response = await run_db(auth_service.register_user, payload)
+    request.session.update(session_from_claims(claims_from_auth_response(response)))
+    return response
 
 
 @router.post(
@@ -60,9 +62,11 @@ async def register(payload: UserCreate) -> AuthResponse:
     description="Memvalidasi email/password dan menghasilkan JWT access token dengan roles dan permissions user.",
     responses=COMMON_ERROR_RESPONSES,
 )
-async def login(payload: LoginRequest) -> AuthResponse:
+async def login(payload: LoginRequest, request: Request) -> AuthResponse:
     """Authenticate a user and issue a JWT access token."""
-    return await run_db(auth_service.login_user, payload)
+    response = await run_db(auth_service.login_user, payload)
+    request.session.update(session_from_claims(claims_from_auth_response(response)))
+    return response
 
 
 @router.post(
@@ -72,8 +76,9 @@ async def login(payload: LoginRequest) -> AuthResponse:
     description="Logout stateless. Client menghapus JWT dari localStorage/sessionStorage.",
     responses=COMMON_ERROR_RESPONSES,
 )
-def logout(_current_user: CurrentUser) -> LogoutResponse:
+def logout(request: Request) -> LogoutResponse:
     """Acknowledge logout; the client discards the stored JWT."""
+    request.session.clear()
     return auth_service.logout_user()
 
 

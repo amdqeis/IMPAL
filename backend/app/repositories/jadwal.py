@@ -1,7 +1,7 @@
 from datetime import time
 
 from sqlalchemy import asc, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only, noload
 
 from app.models import Jadwal, Tempat
 from app.repositories.query_helpers import apply_sort, paginate_scalars
@@ -19,7 +19,11 @@ def list_jadwal(
     sort_by: str | None = None,
     sort_order: str = "asc",
 ) -> tuple[list[Jadwal], int]:
-    query = select(Jadwal)
+    query = select(Jadwal).options(
+        load_only(Jadwal.id_jadwal, Jadwal.id_tempat, Jadwal.jam_mulai, Jadwal.jam_selesai),
+        noload(Jadwal.reservasi_list),
+        noload(Jadwal.tempat),
+    )
     if id_tempat is not None:
         query = query.where(Jadwal.id_tempat == id_tempat)
     if id_cabang is not None:
@@ -56,7 +60,16 @@ def list_jadwal_tersedia(
     sort_by: str | None = None,
     sort_order: str = "asc",
 ) -> tuple[list[Jadwal], int]:
-    query = select(Jadwal).join(Tempat).where(Tempat.status == "available")
+    query = (
+        select(Jadwal)
+        .options(
+            load_only(Jadwal.id_jadwal, Jadwal.id_tempat, Jadwal.jam_mulai, Jadwal.jam_selesai),
+            noload(Jadwal.reservasi_list),
+            noload(Jadwal.tempat),
+        )
+        .join(Tempat)
+        .where(Tempat.status == "available")
+    )
     if id_tempat is not None:
         query = query.where(Jadwal.id_tempat == id_tempat)
     if id_cabang is not None:

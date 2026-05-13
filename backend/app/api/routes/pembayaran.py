@@ -95,6 +95,21 @@ async def update_status_pembayaran(
 
 
 @router.post(
+    "/{payment_id}/dummy-confirm",
+    response_model=PaymentRead,
+    summary="Konfirmasi dummy pembayaran",
+    description="Mengonfirmasi pembayaran dummy QRIS. User biasa hanya boleh mengonfirmasi pembayaran miliknya sendiri.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+async def dummy_confirm_pembayaran(
+    payment_id: int,
+    current_user: User = Depends(require_permissions(CREATE_PAYMENTS, MANAGE_PAYMENTS)),
+):
+    """Confirm a dummy payment gateway response."""
+    return await run_db(service.dummy_confirm_payment, payment_id, current_user=current_user, serializer=PaymentRead)
+
+
+@router.post(
     "/{payment_id}/logs",
     response_model=PaymentLogRead,
     status_code=status.HTTP_201_CREATED,
