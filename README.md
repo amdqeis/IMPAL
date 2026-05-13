@@ -100,7 +100,7 @@ pip install -r requirements.txt
 ```
 Jalankan Backend
 ```bash
-uvicorn main:app --reload
+uvicorn main:app --reload --no-access-log
 ```
 Backend akan berjalan pada:
 ```bash
