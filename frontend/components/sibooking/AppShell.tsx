@@ -103,11 +103,11 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(() =>
     readStoredBranchId(),
   );
-  const [branchesLoading, setBranchesLoading] = useState(() => role === "admin" && showBranchSelector);
+  const [branchesLoading, setBranchesLoading] = useState(() => role !== "owner" && showBranchSelector);
   const [branchesError, setBranchesError] = useState<string | null>(null);
   const auth = useSyncExternalStore(subscribeStoredAuth, getStoredAuthSnapshot, getServerAuthSnapshot);
   const loginPath = role === "user" ? "/login" : "/admin/login";
-  const shouldLoadBranches = role === "admin" && showBranchSelector;
+  const shouldLoadBranches = role !== "owner" && showBranchSelector;
 
   useEffect(() => {
     const stored = getStoredAuth();
@@ -142,7 +142,7 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
 
   const menu = role === "owner" ? ownerMenu : role === "admin" ? adminMenu : userMenu;
   const profileHref = role === "owner" ? "/owner/profile" : role === "admin" ? "/admin/profile" : "/user/profile";
-  const displayName = auth?.user.nama ?? (role === "user" ? "Jonathan Doang" : "Andre Hungkul");
+  const displayName = auth?.user.nama ?? role.toUpperCase();
   const selectedBranch = useMemo(
     () => branches.find((branch) => branch.id_cabang === selectedBranchId) ?? null,
     [branches, selectedBranchId],
@@ -327,8 +327,8 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
             </Link>
             <button
               type="button"
-              onClick={() => {
-                api.auth.logout();
+              onClick={async () => {
+                await api.auth.logout();
                 setIsOpen(false);
                 router.replace(loginPath);
               }}

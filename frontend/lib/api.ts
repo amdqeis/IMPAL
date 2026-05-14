@@ -341,6 +341,7 @@ async function request<T>(
   const token = auth ? getStoredToken() : null;
   const response = await fetch(buildUrl(path, query), {
     ...init,
+    credentials: init.credentials ?? "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -402,6 +403,7 @@ async function requestBlob(
   const token = auth ? getStoredToken() : null;
   const response = await fetch(buildUrl(path, query), {
     ...init,
+    credentials: init.credentials ?? "include",
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -459,7 +461,13 @@ export const api = {
       }),
     getUserAccess: (userId: number) => request<AuthResponse>(`/auth/users/${userId}/access`),
     listPermissions: () => request<string[]>("/auth/permissions"),
-    logout: clearAuth,
+    logout: async () => {
+      try {
+        await request<{ message: string }>("/auth/logout", { method: "POST" });
+      } finally {
+        clearAuth();
+      }
+    },
   },
   masterData: {
     listCabang: (query?: PaginationQuery, options?: ApiCallOptions) =>
@@ -504,14 +512,14 @@ export const api = {
       requestPaginatedData<Jadwal>("/jadwal/", { query, ...options }),
     listPaginated: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }, options?: ApiCallOptions) =>
       requestPaginatedResponse<Jadwal>("/jadwal/", { query, ...options }),
-    listAvailability: (query: PaginationQuery & { id_tempat: number; tanggal: string }) =>
-      requestPaginatedData<Jadwal>("/jadwal/availability", { query }),
-    listAvailabilityPaginated: (query: PaginationQuery & { id_tempat: number; tanggal: string }) =>
-      requestPaginatedResponse<Jadwal>("/jadwal/availability", { query }),
-    listTersedia: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }) =>
-      requestPaginatedData<Jadwal>("/jadwal/tersedia", { query }),
-    listTersediaPaginated: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }) =>
-      requestPaginatedResponse<Jadwal>("/jadwal/tersedia", { query }),
+    listAvailability: (query: PaginationQuery & { id_tempat: number; tanggal: string }, options?: ApiCallOptions) =>
+      requestPaginatedData<Jadwal>("/jadwal/availability", { query, ...options }),
+    listAvailabilityPaginated: (query: PaginationQuery & { id_tempat: number; tanggal: string }, options?: ApiCallOptions) =>
+      requestPaginatedResponse<Jadwal>("/jadwal/availability", { query, ...options }),
+    listTersedia: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }, options?: ApiCallOptions) =>
+      requestPaginatedData<Jadwal>("/jadwal/tersedia", { query, ...options }),
+    listTersediaPaginated: (query?: PaginationQuery & { id_tempat?: number; id_cabang?: number; jam_mulai?: string; jam_selesai?: string }, options?: ApiCallOptions) =>
+      requestPaginatedResponse<Jadwal>("/jadwal/tersedia", { query, ...options }),
     create: (payload: JadwalCreatePayload) =>
       request<Jadwal>("/jadwal/", {
         method: "POST",
@@ -559,6 +567,8 @@ export const api = {
         method: "POST",
         body: payload,
       }),
+    get: (reservasiId: number, options?: ApiCallOptions) =>
+      request<Reservasi>(`/reservasi/${reservasiId}`, { ...options }),
     updateStatus: (reservasiId: number, payload: ReservasiUpdateStatusPayload) =>
       request<Reservasi>(`/reservasi/${reservasiId}/status`, {
         method: "PATCH",
@@ -595,6 +605,10 @@ export const api = {
       request<Pembayaran>(`/pembayaran/${paymentId}/status`, {
         method: "PATCH",
         body: payload,
+      }),
+    dummyConfirm: (paymentId: number) =>
+      request<Pembayaran>(`/pembayaran/${paymentId}/dummy-confirm`, {
+        method: "POST",
       }),
     createLog: (paymentId: number, payload: PaymentLogCreatePayload) =>
       request<PaymentLog>(`/pembayaran/${paymentId}/logs`, {

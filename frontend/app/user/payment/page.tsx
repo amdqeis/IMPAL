@@ -1,212 +1,493 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { InputHTMLAttributes } from "react";
-import { Suspense, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { useWatch } from "react-hook-form";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { AppShell } from "@/components/sibooking/AppShell";
-import { ErrorState, LoadingState } from "@/components/sibooking/States";
-import { api, getStoredAuth, type Jadwal, type Pembayaran, type Reservasi, type Tempat } from "@/lib/api";
-import { fallbackSchedules, fallbackTables } from "@/lib/fallback-data";
-import { formatCurrency, normalizeTime, roomLabel, roomTypeFromPrice } from "@/lib/format";
-import { useApiData } from "@/lib/use-api-data";
+import { AppShell, useSelectedBranch } from "@/components/sibooking/AppShell";
+import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/States";
+import { useToast } from "@/components/sibooking/ToastProvider";
+import { BookingForm, type PaymentBookingFormValues } from "@/components/user/payment/BookingForm";
+import { OrderSummary } from "@/components/user/payment/OrderSummary";
+import { PaymentMethod, QrisPanel } from "@/components/user/payment/PaymentMethod";
+import { api, clearAuth, getStoredAuth, type Jadwal, type Pembayaran, type Reservasi, type Tempat } from "@/lib/api";
+import { getApiErrorMessage, isUnauthorizedError } from "@/lib/api-error";
+import { invalidateBranchResourceCache, useBranchResourceCache } from "@/lib/use-branch-resource-cache";
+
+const PAYMENT_FORM_ID = "user-payment-booking-form";
+const EMPTY_TABLES: Tempat[] = [];
+const EMPTY_SCHEDULES: Jadwal[] = [];
 
 const bookingSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi"),
   no_hp: z.string().min(8, "No. Telp wajib diisi"),
-  id_tempat: z.number().min(1),
-  id_jadwal: z.number().min(1),
-  tanggal: z.string().min(1, "Tanggal wajib diisi"),
+  id_tempat: z.number().min(1, "Pilih ruangan"),
+  id_jadwal: z.number().min(1, "Pilih jadwal"),
+  tanggal: z
+    .string()
+    .min(1, "Tanggal wajib diisi")
+    .refine((value) => value >= getLocalDateIso(), "Tanggal reservasi tidak boleh di masa lalu"),
 });
-
-type BookingValues = z.infer<typeof bookingSchema>;
 
 export default function UserPaymentPage() {
   return (
-    <Suspense fallback={<AppShell role="user"><div className="p-8 font-bold">Memuat payment...</div></AppShell>}>
-      <UserPaymentContent />
-    </Suspense>
+    <AppShell role="user">
+      <Suspense fallback={<div className="p-8 font-bold text-[#174D3D]">Memuat payment...</div>}>
+        <UserPaymentContent />
+      </Suspense>
+    </AppShell>
   );
 }
 
 function UserPaymentContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const requestedTableId = Number(params.get("id_tempat") ?? fallbackTables[1].id_tempat);
-  const requestedScheduleId = Number(params.get("id_jadwal") ?? fallbackSchedules.find((item) => item.id_tempat === requestedTableId)?.id_jadwal ?? fallbackSchedules[1].id_jadwal);
-  const tables = useApiData<Tempat[]>(() => api.masterData.listTempat(), fallbackTables);
-  const schedules = useApiData<Jadwal[]>(
-    () => api.jadwal.listTersedia(params.get("id_tempat") ? { id_tempat: requestedTableId } : undefined),
-    fallbackSchedules,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+  const { selectedBranch, branchesLoading, branchesError } = useSelectedBranch();
+  const branchId = selectedBranch?.id_cabang ?? null;
+  const requestedTableId = Number(params.get("id_tempat") ?? 0);
+  const requestedScheduleId = Number(params.get("id_jadwal") ?? 0);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetryingPayment, setIsRetryingPayment] = useState(false);
+  const [isRefreshingPayment, setIsRefreshingPayment] = useState(false);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
   const [reservation, setReservation] = useState<Reservasi | null>(null);
+  const [pendingReservation, setPendingReservation] = useState<Reservasi | null>(null);
   const [payment, setPayment] = useState<Pembayaran | null>(null);
 
-  const defaultTableId = requestedTableId;
-  const defaultScheduleId = requestedScheduleId;
-  const auth = getStoredAuth();
-
-  const form = useForm<BookingValues>({
+  const form = useForm<PaymentBookingFormValues>({
     resolver: zodResolver(bookingSchema),
-    values: {
-      nama: auth?.user.nama ?? "Jonathan",
-      no_hp: auth?.user.no_hp ?? "08123456",
-      id_tempat: defaultTableId,
-      id_jadwal: defaultScheduleId,
-      tanggal: "2026-03-23",
+    defaultValues: {
+      nama: "",
+      no_hp: "",
+      id_tempat: 0,
+      id_jadwal: 0,
+      tanggal: getLocalDateIso(),
     },
   });
-
   const selectedTableId = useWatch({ control: form.control, name: "id_tempat" });
   const selectedScheduleId = useWatch({ control: form.control, name: "id_jadwal" });
-  const selectedTable = tables.data.find((table) => table.id_tempat === Number(selectedTableId)) ?? tables.data[0];
-  const selectedSchedule = schedules.data.find((schedule) => schedule.id_jadwal === Number(selectedScheduleId)) ?? schedules.data[0];
-  const roomType = roomTypeFromPrice(selectedTable?.harga);
-  const hours = selectedSchedule ? Math.max(1, Number(normalizeTime(selectedSchedule.jam_selesai).slice(0, 2)) - Number(normalizeTime(selectedSchedule.jam_mulai).slice(0, 2))) : 1;
-  const total = useMemo(() => Number(selectedTable?.harga ?? 0) * hours, [hours, selectedTable?.harga]);
+  const selectedDate = useWatch({ control: form.control, name: "tanggal" });
 
-  const onSubmit = async (values: BookingValues) => {
-    setError(null);
-    const currentAuth = getStoredAuth();
-    if (!currentAuth) {
-      router.push("/login");
+  useEffect(() => {
+    const auth = getStoredAuth();
+    if (!auth) {
+      router.replace("/login");
       return;
     }
 
-    const createdReservation = await api.reservasi.create({
-      id_user: currentAuth.user.id_user,
-      id_tempat: values.id_tempat,
-      id_jadwal: values.id_jadwal,
-      tanggal: values.tanggal,
-      status: "pending",
-      total_harga: total,
-    });
-    const createdPayment = await api.pembayaran.create({
-      id_reservasi: createdReservation.id_reservasi,
-      amount: total,
-      status: "pending",
-    });
-    window.sessionStorage.setItem("sibooking_latest_reservation", String(createdReservation.id_reservasi));
-    window.sessionStorage.setItem("sibooking_latest_payment", String(createdPayment.id_payment));
-    setReservation(createdReservation);
-    setPayment(createdPayment);
+    form.setValue("nama", auth.user.nama);
+    form.setValue("no_hp", auth.user.no_hp);
+  }, [form, router]);
+
+  const fetchTables = useCallback(
+    (signal: AbortSignal) => {
+      if (!branchId) {
+        return Promise.resolve([]);
+      }
+
+      return api.masterData.listTempat(
+        {
+          id_cabang: branchId,
+          limit: 100,
+          sort_by: "nomor_meja",
+          sort_order: "asc",
+        },
+        { signal },
+      );
+    },
+    [branchId],
+  );
+  const tablesResource = useBranchResourceCache<Tempat[]>({
+    resource: "user-payment-tables",
+    branchId,
+    cacheParts: ["tables"],
+    enabled: Boolean(branchId),
+    fetcher: fetchTables,
+  });
+  const tables = tablesResource.data ?? EMPTY_TABLES;
+
+  useEffect(() => {
+    if (isUnauthorizedError(tablesResource.error)) {
+      clearAuth();
+      router.replace("/login");
+    }
+  }, [router, tablesResource.error]);
+
+  useEffect(() => {
+    if (tables.length === 0) {
+      form.setValue("id_tempat", 0);
+      return;
+    }
+
+    const current = Number(form.getValues("id_tempat"));
+    const currentIsValid = tables.some((table) => table.id_tempat === current);
+    const requestedIsValid = tables.some((table) => table.id_tempat === requestedTableId);
+    const firstAvailable = tables.find((table) => table.status.toLowerCase() === "available") ?? tables[0];
+    const nextTableId = currentIsValid ? current : requestedIsValid ? requestedTableId : firstAvailable.id_tempat;
+
+    if (current !== nextTableId) {
+      form.setValue("id_tempat", nextTableId);
+    }
+  }, [form, requestedTableId, tables]);
+
+  const availabilityEnabled = Boolean(selectedTableId && selectedDate);
+  const fetchAvailability = useCallback(
+    (signal: AbortSignal) => {
+      const tableId = Number(selectedTableId);
+      if (!tableId || !selectedDate) {
+        return Promise.resolve([]);
+      }
+
+      return api.jadwal.listAvailability(
+        {
+          id_tempat: tableId,
+          tanggal: selectedDate,
+          limit: 100,
+          sort_by: "jam_mulai",
+          sort_order: "asc",
+        },
+        { signal },
+      );
+    },
+    [selectedDate, selectedTableId],
+  );
+  const availabilityResource = useBranchResourceCache<Jadwal[]>({
+    resource: "user-payment-availability",
+    branchId: Number(selectedTableId) || null,
+    cacheParts: ["availability", selectedDate],
+    enabled: availabilityEnabled,
+    fetcher: fetchAvailability,
+  });
+  const availableSchedules = useMemo(
+    () => (availabilityResource.data ?? EMPTY_SCHEDULES).filter((schedule) => schedule.available !== false),
+    [availabilityResource.data],
+  );
+
+  useEffect(() => {
+    if (isUnauthorizedError(availabilityResource.error)) {
+      clearAuth();
+      router.replace("/login");
+    }
+  }, [availabilityResource.error, router]);
+
+  useEffect(() => {
+    if (!availabilityEnabled || availabilityResource.loading) {
+      return;
+    }
+
+    const current = Number(form.getValues("id_jadwal"));
+    const currentIsValid = availableSchedules.some((schedule) => schedule.id_jadwal === current);
+    const requestedIsValid = availableSchedules.some((schedule) => schedule.id_jadwal === requestedScheduleId);
+    const nextScheduleId = currentIsValid
+      ? current
+      : requestedIsValid
+        ? requestedScheduleId
+        : availableSchedules[0]?.id_jadwal ?? 0;
+
+    if (current !== nextScheduleId) {
+      form.setValue("id_jadwal", nextScheduleId);
+    }
+  }, [availabilityEnabled, availabilityResource.loading, availableSchedules, form, requestedScheduleId]);
+
+  const selectedTable = useMemo(
+    () => tables.find((table) => table.id_tempat === Number(selectedTableId)) ?? null,
+    [selectedTableId, tables],
+  );
+  const selectedSchedule = useMemo(
+    () => availableSchedules.find((schedule) => schedule.id_jadwal === Number(selectedScheduleId)) ?? null,
+    [availableSchedules, selectedScheduleId],
+  );
+  const hours = getDurationHours(selectedSchedule);
+  const total = useMemo(() => Number(selectedTable?.harga ?? 0) * hours, [hours, selectedTable?.harga]);
+  const tablesError = tablesResource.error
+    ? getApiErrorMessage(tablesResource.error, "Gagal memuat data ruangan.", "Kamu tidak punya akses melihat ruangan.")
+    : null;
+  const availabilityError = availabilityResource.error
+    ? getApiErrorMessage(availabilityResource.error, "Gagal memuat availability.", "Kamu tidak punya akses melihat jadwal.")
+    : null;
+  const latestReservation = pendingReservation ?? reservation;
+  const canSubmit = Boolean(selectedBranch && selectedTable && selectedSchedule && total > 0);
+
+  const onSubmit = async (values: PaymentBookingFormValues) => {
+    setSubmitError(null);
+    const auth = getStoredAuth();
+    if (!auth) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!selectedTable || selectedTable.id_tempat !== values.id_tempat) {
+      setSubmitError("Ruangan tidak valid untuk cabang yang dipilih.");
+      return;
+    }
+
+    const schedule = availableSchedules.find((item) => item.id_jadwal === values.id_jadwal);
+    if (!schedule) {
+      setSubmitError("Jadwal yang dipilih tidak tersedia untuk tanggal tersebut.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const createdReservation = await api.reservasi.create({
+        id_user: auth.user.id_user,
+        id_tempat: values.id_tempat,
+        id_jadwal: values.id_jadwal,
+        tanggal: values.tanggal,
+        status: "pending",
+        total_harga: total,
+      });
+
+      setReservation(createdReservation);
+      setPendingReservation(null);
+      storeLatestReservation(createdReservation.id_reservasi);
+      invalidateUserCaches(branchId, Number(selectedTableId));
+
+      try {
+        const createdPayment = await api.pembayaran.create({
+          id_reservasi: createdReservation.id_reservasi,
+          amount: total,
+          status: "pending",
+        });
+        setPayment(createdPayment);
+        storeLatestPayment(createdPayment.id_payment);
+        toast.success("Pesanan dibuat. Silakan lanjutkan pembayaran QRIS.");
+      } catch (err) {
+        setPendingReservation(createdReservation);
+        setPayment(null);
+        setSubmitError(
+          getApiErrorMessage(err, "Reservasi dibuat, tetapi pembayaran gagal dibuat. Coba ulangi pembuatan pembayaran."),
+        );
+        toast.warning("Reservasi sudah dibuat, tetapi payment belum berhasil dibuat.");
+      }
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, "Gagal membuat reservasi."));
+      if (isUnauthorizedError(err)) {
+        clearAuth();
+        router.replace("/login");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const completePayment = async () => {
-    if (payment) {
-      await api.pembayaran.updateStatus(payment.id_payment, { status: "paid" });
+  const retryPayment = async () => {
+    const sourceReservation = latestReservation;
+    if (!sourceReservation) {
+      return;
     }
-    if (reservation) {
-      await api.reservasi.updateStatus(reservation.id_reservasi, { status: "confirmed" });
+
+    setIsRetryingPayment(true);
+    setSubmitError(null);
+    try {
+      const createdPayment = await api.pembayaran.create({
+        id_reservasi: sourceReservation.id_reservasi,
+        amount: sourceReservation.total_harga,
+        status: "pending",
+      });
+      setReservation(sourceReservation);
+      setPendingReservation(null);
+      setPayment(createdPayment);
+      storeLatestPayment(createdPayment.id_payment);
+      toast.success("Payment berhasil dibuat.");
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, "Gagal membuat payment."));
+      if (isUnauthorizedError(err)) {
+        clearAuth();
+        router.replace("/login");
+      }
+    } finally {
+      setIsRetryingPayment(false);
     }
-    router.push("/user/payment/completed");
+  };
+
+  const refreshPaymentStatus = async () => {
+    const reservasiId = latestReservation?.id_reservasi ?? payment?.id_reservasi;
+    if (!reservasiId) {
+      return;
+    }
+
+    setIsRefreshingPayment(true);
+    setSubmitError(null);
+    try {
+      const payments = await api.pembayaran.list({
+        id_reservasi: reservasiId,
+        limit: 1,
+        sort_by: "id_payment",
+        sort_order: "desc",
+      });
+      const latestPayment = payments[0] ?? null;
+      setPayment(latestPayment);
+
+      if (!latestPayment) {
+        setSubmitError("Payment untuk reservasi ini belum ditemukan.");
+      } else if (latestPayment.status.toLowerCase() === "paid") {
+        storeLatestPayment(latestPayment.id_payment);
+        router.push(`/user/payment/completed?id_reservasi=${reservasiId}&id_payment=${latestPayment.id_payment}`);
+      } else {
+        toast.info("Pembayaran masih menunggu konfirmasi.");
+      }
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, "Gagal mengecek status pembayaran."));
+      if (isUnauthorizedError(err)) {
+        clearAuth();
+        router.replace("/login");
+      }
+    } finally {
+      setIsRefreshingPayment(false);
+    }
+  };
+
+  const dummyConfirmPayment = async () => {
+    if (!payment) {
+      return;
+    }
+
+    setIsConfirmingPayment(true);
+    setSubmitError(null);
+    try {
+      const confirmedPayment = await api.pembayaran.dummyConfirm(payment.id_payment);
+      const reservasiId = confirmedPayment.id_reservasi;
+      setPayment(confirmedPayment);
+      if (confirmedPayment.reservasi) {
+        setReservation(confirmedPayment.reservasi);
+      }
+      storeLatestReservation(reservasiId);
+      storeLatestPayment(confirmedPayment.id_payment);
+      invalidateUserCaches(branchId, Number(selectedTableId));
+      toast.success("Pembayaran dummy berhasil dikonfirmasi.");
+      router.push(`/user/payment/completed?id_reservasi=${reservasiId}&id_payment=${confirmedPayment.id_payment}`);
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, "Gagal mengonfirmasi pembayaran dummy."));
+      if (isUnauthorizedError(err)) {
+        clearAuth();
+        router.replace("/login");
+      }
+    } finally {
+      setIsConfirmingPayment(false);
+    }
   };
 
   return (
-    <AppShell role="user">
-      <div className="grid w-full max-w-[1180px] grid-cols-1 gap-8 px-4 py-2 sm:px-6 md:grid-cols-[1.05fr_1fr] md:px-8">
-        <div className="flex flex-col gap-1">
-          <section className="min-h-[382px] rounded-[6px] border border-[#D9D9D9] bg-white/80 px-10 py-6">
-            <h2 className="mb-3 text-[16px] font-black text-[#0F4C3E]">Detail Pemesanan</h2>
-            {tables.loading || schedules.loading ? <LoadingState /> : null}
-            {error ? <ErrorState message={error} /> : null}
-            <form onSubmit={form.handleSubmit(onSubmit, () => setError("Lengkapi detail pemesanan."))} className="max-w-[295px] space-y-2">
-              <Input label="Name" {...form.register("nama")} />
-              <Input label="No. Telp" {...form.register("no_hp")} />
-              <label className="block">
-                <span className="mb-1 block text-[12px] font-black text-[#4B5563]">Tipe Ruangan</span>
-                <select {...form.register("id_tempat", { valueAsNumber: true })} className="h-[30px] w-full rounded-[7px] border border-[#D1D5DB] px-3 text-[12px] font-bold">
-                  {tables.data.map((table) => (
-                    <option key={table.id_tempat} value={table.id_tempat}>
-                      {roomLabel(table.nomor_meja)} - {roomTypeFromPrice(table.harga)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Input label="Tanggal Pemesanan" type="date" {...form.register("tanggal")} />
-              <div className="grid grid-cols-2 gap-5">
-                <label className="block">
-                  <span className="mb-1 block text-[12px] font-black text-[#4B5563]">Jam Mulai</span>
-                  <select {...form.register("id_jadwal", { valueAsNumber: true })} className="h-[30px] w-full rounded-[7px] border border-[#D1D5DB] px-2 text-[12px] font-bold">
-                    {schedules.data
-                      .filter((schedule) => schedule.id_tempat === Number(selectedTableId))
-                      .map((schedule) => (
-                        <option key={schedule.id_jadwal} value={schedule.id_jadwal}>
-                          {normalizeTime(schedule.jam_mulai)}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-[12px] font-black text-[#4B5563]">Jam Selesai</span>
-                  <input readOnly value={normalizeTime(selectedSchedule?.jam_selesai)} className="h-[30px] w-full rounded-[7px] border border-[#D1D5DB] px-2 text-[12px] font-bold" />
-                </label>
-              </div>
-            </form>
-          </section>
-
-          <section className="min-h-[368px] rounded-[6px] border border-[#D9D9D9] bg-white/80 p-3">
-            <h2 className="text-[16px] font-black text-[#0F4C3E]">Payment Method</h2>
-            <button className="mt-2 flex h-[138px] w-[132px] flex-col items-center justify-center rounded-[8px] border border-[#3B82F6] bg-white">
-              <Image src="/Qris.png" alt="QRIS" width={88} height={88} className="h-[82px] w-[82px]" />
-              <span className="text-[18px] font-black text-black">QRIS</span>
-            </button>
-          </section>
+    <div className="grid w-full max-w-[1180px] grid-cols-1 gap-8 px-4 py-2 sm:px-6 md:grid-cols-[1.05fr_1fr] md:px-8">
+      {branchesError ? (
+        <div className="md:col-span-2">
+          <ErrorState message={branchesError} />
         </div>
-
-        <div className="flex flex-col gap-5">
-          <aside className="min-h-[255px] rounded-[6px] border border-[#D9D9D9] bg-white/80 p-4">
-            <h2 className="text-[18px] font-black text-[#0F4C3E]">Pesanan Anda</h2>
-            <div className="mt-2 flex gap-4">
-              <div className="flex h-[58px] w-[58px] items-center justify-center rounded-[6px] bg-black">
-                <Image src="/user (Icon Admin User).png" alt="" width={46} height={46} />
-              </div>
-              <div>
-                <h3 className="text-[16px] font-black text-[#0F4C3E]">
-                  {roomLabel(selectedTable?.nomor_meja)} - {roomType}
-                </h3>
-                <p className="mt-2 text-[12px] font-bold text-[#D1D5DB]">Sehat, dan bertenaga</p>
-              </div>
-            </div>
-            <div className="mt-20 flex items-center justify-between">
-              <p className="text-[16px] font-black text-[#C4C4C4]">Total</p>
-              <p className="text-[16px] font-black text-[#0F4C3E]">{formatCurrency(total)}</p>
-            </div>
-            <button onClick={form.handleSubmit(onSubmit, () => setError("Lengkapi detail pemesanan."))} className="mx-auto mt-4 block h-[28px] w-[294px] max-w-full rounded-[6px] bg-[#2F80ED] text-[16px] font-black text-white">
-              Place Order
-            </button>
-          </aside>
-
-          {payment ? (
-            <section className="flex min-h-[478px] flex-col items-center rounded-[6px] border border-[#D9D9D9] bg-white/85 p-6">
-              <div className="text-[64px] font-black tracking-normal text-[#1F2946]">QRIS</div>
-              <Image src="/Qris.png" alt="QRIS code" width={230} height={230} className="mt-2 h-[230px] w-[230px] object-contain" />
-              <div className="mt-3 rounded-[6px] border border-[#D9D9D9] px-10 py-1 text-[12px] font-black text-[#4B5563]">
-                Valid Until 23, March 2026 19:00:34
-              </div>
-              <button onClick={completePayment} className="mt-5 rounded-[8px] bg-[#005344] px-8 py-2 text-[16px] font-black text-white">
-                Confirm Payment
-              </button>
-            </section>
-          ) : null}
+      ) : branchesLoading ? (
+        <div className="md:col-span-2">
+          <LoadingState label="Memuat cabang..." />
         </div>
-      </div>
-    </AppShell>
+      ) : !selectedBranch ? (
+        <div className="md:col-span-2">
+          <EmptyState message="Belum ada cabang yang dapat ditampilkan." />
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1">
+            {tablesError ? <ErrorState message={tablesError} /> : null}
+            {availabilityError ? <ErrorState message={availabilityError} /> : null}
+            <BookingForm
+              form={form}
+              formId={PAYMENT_FORM_ID}
+              tables={tables}
+              availableSchedules={availableSchedules}
+              selectedTableId={Number(selectedTableId)}
+              selectedSchedule={selectedSchedule}
+              tablesLoading={tablesResource.loading}
+              availabilityLoading={availabilityResource.loading}
+              disabled={isSubmitting || Boolean(payment)}
+              minDate={getLocalDateIso()}
+              onSubmit={form.handleSubmit(onSubmit, () => setSubmitError("Lengkapi detail pemesanan."))}
+            />
+            <PaymentMethod disabled={isSubmitting} />
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <OrderSummary
+              formId={PAYMENT_FORM_ID}
+              selectedTable={selectedTable}
+              total={total}
+              payment={payment}
+              pendingReservation={pendingReservation}
+              submitError={submitError}
+              canSubmit={canSubmit}
+              isSubmitting={isSubmitting}
+              isRetryingPayment={isRetryingPayment}
+              onRetryPayment={retryPayment}
+            />
+            {payment ? (
+              <QrisPanel
+                payment={payment}
+                isConfirmingPayment={isConfirmingPayment}
+                isRefreshingPayment={isRefreshingPayment}
+                onDummyConfirm={dummyConfirmPayment}
+                onRefreshStatus={refreshPaymentStatus}
+              />
+            ) : null}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
-function Input(props: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  const { label, ...inputProps } = props;
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[12px] font-black text-[#4B5563]">{label}</span>
-      <input {...inputProps} className="h-[30px] w-full rounded-[7px] border border-[#D1D5DB] px-3 text-[12px] font-bold" />
-    </label>
-  );
+function getDurationHours(schedule: Jadwal | null) {
+  if (!schedule) {
+    return 1;
+  }
+
+  const start = parseTimeToMinutes(schedule.jam_mulai);
+  const end = parseTimeToMinutes(schedule.jam_selesai);
+  if (start === null || end === null || end <= start) {
+    return 1;
+  }
+
+  return Math.max(1, (end - start) / 60);
+}
+
+function parseTimeToMinutes(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function getLocalDateIso() {
+  const date = new Date();
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+function storeLatestReservation(reservasiId: number) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem("sibooking_latest_reservation", String(reservasiId));
+}
+
+function storeLatestPayment(paymentId: number) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem("sibooking_latest_payment", String(paymentId));
+}
+
+function invalidateUserCaches(branchId: number | null, tableId: number | null) {
+  invalidateBranchResourceCache("user-active-bookings", branchId);
+  invalidateBranchResourceCache("user-history", branchId);
+  invalidateBranchResourceCache("user-dashboard", branchId);
+  invalidateBranchResourceCache("user-payment-availability", tableId);
 }
