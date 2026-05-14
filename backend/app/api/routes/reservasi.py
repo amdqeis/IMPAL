@@ -72,6 +72,21 @@ async def create_reservasi(
     return await run_db(service.create_reservasi, payload, current_user=current_user, serializer=ReservasiRead)
 
 
+@router.get(
+    "/{reservasi_id}",
+    response_model=ReservasiListRead,
+    summary="Detail reservasi",
+    description="Mengambil detail satu reservasi. User biasa hanya boleh melihat reservasi miliknya sendiri.",
+    responses=COMMON_ERROR_RESPONSES,
+)
+async def get_reservasi(
+    reservasi_id: int,
+    current_user: User = Depends(require_permissions(VIEW_RESERVATIONS, MANAGE_RESERVATIONS)),
+) -> ReservasiListRead:
+    """Return one reservation detail scoped by permission."""
+    return await run_db(service.get_reservasi_detail, reservasi_id, current_user=current_user)
+
+
 @router.patch(
     "/{reservasi_id}/status",
     response_model=ReservasiRead,

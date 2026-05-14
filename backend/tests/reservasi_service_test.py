@@ -7,8 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.models import Base, Cabang, Jadwal, Reservasi, Tempat, User
+from app.models import Base, Cabang, Jadwal, Payment, Reservasi, Tempat, User
 from app.schemas.reservasi import ReservasiCreate, ReservasiUpdateStatus
+from app.services.auth_claims import AuthenticatedUser
 from app.services import jadwal as jadwal_service
 from app.services import reservasi as reservasi_service
 
@@ -182,6 +183,62 @@ class ReservasiServiceTest(unittest.TestCase):
             reservasi_service.create_reservasi(self.db, payload, current_user=user)
 
         self.assertEqual(exc.exception.status_code, 400)
+
+    def test_get_reservasi_detail_allows_owner_and_returns_latest_payment_status(self) -> None:
+        user = self._create_user()
+        jadwal = self._create_jadwal(self._create_tempat())
+        reservasi = reservasi_service.create_reservasi(
+            self.db,
+            self._payload(user, jadwal),
+            current_user=user,
+        )
+        self.db.add(Payment(id_reservasi=reservasi.id_reservasi, amount=reservasi.total_harga, status="pending"))
+        self.db.flush()
+        latest = Payment(id_reservasi=reservasi.id_reservasi, amount=reservasi.total_harga, status="paid")
+        self.db.add(latest)
+        self.db.commit()
+
+        detail = reservasi_service.get_reservasi_detail(self.db, reservasi.id_reservasi, current_user=user)
+
+        self.assertEqual(detail.id_reservasi, reservasi.id_reservasi)
+        self.assertEqual(detail.latest_payment_id, latest.id_payment)
+        self.assertEqual(detail.latest_payment_status, "paid")
+
+    def test_get_reservasi_detail_rejects_other_user(self) -> None:
+        owner = self._create_user("owner@example.com")
+        other_user = self._create_user("other-detail@example.com")
+        jadwal = self._create_jadwal(self._create_tempat())
+        reservasi = reservasi_service.create_reservasi(
+            self.db,
+            self._payload(owner, jadwal),
+            current_user=owner,
+        )
+
+        with self.assertRaises(HTTPException) as exc:
+            reservasi_service.get_reservasi_detail(self.db, reservasi.id_reservasi, current_user=other_user)
+
+        self.assertEqual(exc.exception.status_code, 403)
+
+    def test_get_reservasi_detail_allows_manager(self) -> None:
+        owner = self._create_user("owner-manager@example.com")
+        manager = AuthenticatedUser(
+            id_user=999,
+            email="admin@example.com",
+            nama="Admin",
+            no_hp="081299999999",
+            role_names=["admin"],
+            permissions=["manage_reservations"],
+        )
+        jadwal = self._create_jadwal(self._create_tempat())
+        reservasi = reservasi_service.create_reservasi(
+            self.db,
+            self._payload(owner, jadwal),
+            current_user=owner,
+        )
+
+        detail = reservasi_service.get_reservasi_detail(self.db, reservasi.id_reservasi, current_user=manager)
+
+        self.assertEqual(detail.id_reservasi, reservasi.id_reservasi)
 
 
 if __name__ == "__main__":

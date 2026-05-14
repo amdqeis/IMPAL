@@ -242,6 +242,31 @@ def _reservasi_list_row_to_dict(row: Any) -> dict[str, Any]:
     }
 
 
+def get_reservasi_detail(db: Session, reservasi_id: int) -> dict[str, Any] | None:
+    latest_payment_id = (
+        select(Payment.id_payment)
+        .where(Payment.id_reservasi == Reservasi.id_reservasi)
+        .order_by(Payment.id_payment.desc())
+        .limit(1)
+        .correlate(Reservasi)
+        .scalar_subquery()
+    )
+    latest_payment_status = (
+        select(Payment.status)
+        .where(Payment.id_reservasi == Reservasi.id_reservasi)
+        .order_by(Payment.id_payment.desc())
+        .limit(1)
+        .correlate(Reservasi)
+        .scalar_subquery()
+    )
+    row = db.execute(
+        _base_reservasi_list_query(latest_payment_id, latest_payment_status)
+        .where(Reservasi.id_reservasi == reservasi_id)
+        .limit(1)
+    ).mappings().first()
+    return _reservasi_list_row_to_dict(row) if row else None
+
+
 def get_reservasi(db: Session, reservasi_id: int) -> Reservasi | None:
     return db.get(Reservasi, reservasi_id)
 
