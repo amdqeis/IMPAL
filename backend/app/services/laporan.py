@@ -9,7 +9,7 @@ from app.models import Cabang, Laporan, Payment, Reservasi, Tempat, User
 from app.repositories import laporan as repo
 from app.repositories import users as user_repo
 from app.schemas.common import PaginatedResponse, build_paginated_response
-from app.schemas.laporan import LaporanCreate, LaporanUpdate
+from app.schemas.laporan import LaporanCreate, LaporanRead, LaporanUpdate
 
 
 def list_laporan(
@@ -22,7 +22,7 @@ def list_laporan(
     dibuat_oleh: int | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Laporan]:
+) -> PaginatedResponse[LaporanRead]:
     """Return reports using database pagination."""
     items, total_items = repo.list_laporan(
         db,
@@ -34,7 +34,8 @@ def list_laporan(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [LaporanRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def create_laporan(db: Session, payload: LaporanCreate, *, dibuat_oleh: int | None = None) -> Laporan:

@@ -5,7 +5,7 @@ from app.models import Cabang, Tempat
 from app.repositories import master_data as repo
 from app.repositories.query_helpers import validate_value
 from app.schemas.common import PaginatedResponse, build_paginated_response
-from app.schemas.master_data import CabangCreate, CabangUpdate, TempatCreate, TempatUpdate
+from app.schemas.master_data import CabangCreate, CabangRead, CabangUpdate, TempatCreate, TempatRead, TempatUpdate
 
 
 TEMPAT_STATUSES = {"available", "occupied", "maintenance", "booked", "unavailable"}
@@ -19,7 +19,7 @@ def list_cabang(
     search: str | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Cabang]:
+) -> PaginatedResponse[CabangRead]:
     """Return branches using database pagination."""
     items, total_items = repo.list_cabang(
         db,
@@ -29,7 +29,8 @@ def list_cabang(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [CabangRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def create_cabang(db: Session, payload: CabangCreate) -> Cabang:
@@ -75,7 +76,7 @@ def list_tempat(
     search: str | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Tempat]:
+) -> PaginatedResponse[TempatRead]:
     """Return tables filtered by branch or table status using database pagination."""
     normalized_status = validate_value(status_tempat, TEMPAT_STATUSES, field_name="status_tempat")
     items, total_items = repo.list_tempat(
@@ -88,7 +89,8 @@ def list_tempat(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [TempatRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def create_tempat(db: Session, payload: TempatCreate) -> Tempat:
