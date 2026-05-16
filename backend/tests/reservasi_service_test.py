@@ -78,7 +78,7 @@ class ReservasiServiceTest(unittest.TestCase):
             id_tempat=tempat.id_tempat,
             tanggal=tanggal,
         ).data
-        self.assertTrue(empty_slots[0]["available"])
+        self.assertTrue(empty_slots[0].available)
 
         reservasi_service.create_reservasi(self.db, self._payload(user, jadwal, tanggal=tanggal), current_user=user)
         booked_slots = jadwal_service.list_jadwal_availability(
@@ -88,7 +88,7 @@ class ReservasiServiceTest(unittest.TestCase):
             id_tempat=tempat.id_tempat,
             tanggal=tanggal,
         ).data
-        self.assertFalse(booked_slots[0]["available"])
+        self.assertFalse(booked_slots[0].available)
 
         reservasi_service.update_status_reservasi(self.db, 1, ReservasiUpdateStatus(status="cancelled"))
         cancelled_slots = jadwal_service.list_jadwal_availability(
@@ -98,7 +98,7 @@ class ReservasiServiceTest(unittest.TestCase):
             id_tempat=tempat.id_tempat,
             tanggal=tanggal,
         ).data
-        self.assertTrue(cancelled_slots[0]["available"])
+        self.assertTrue(cancelled_slots[0].available)
 
     def test_create_reservasi_rejects_past_date(self) -> None:
         user = self._create_user()

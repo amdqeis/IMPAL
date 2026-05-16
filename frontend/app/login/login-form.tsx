@@ -30,6 +30,9 @@ const loginConfig = {
     redirectTo: "/user/dashboard",
     roleError: "Akun admin/owner harus masuk lewat halaman login admin.",
     submitLabel: "Login",
+    demoAccounts: [
+      { role: "User", email: "ahmad@gmail.com", password: "123123123A" },
+    ],
   },
   admin: {
     alternateHref: "/login",
@@ -37,6 +40,10 @@ const loginConfig = {
     redirectTo: "/admin/dashboard",
     roleError: "Akun ini tidak memiliki akses admin/owner.",
     submitLabel: "Login Admin",
+    demoAccounts: [
+      { role: "Owner", email: "owner@sibooking.test", password: "123123123A" },
+      { role: "Admin", email: "admin@sibooking.test", password: "123123123A" },
+    ],
   },
 } satisfies Record<
   LoginMode,
@@ -46,6 +53,7 @@ const loginConfig = {
     redirectTo: string;
     roleError: string;
     submitLabel: string;
+    demoAccounts: { role: string; email: string; password: string }[];
   }
 >;
 
@@ -161,6 +169,24 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
           </button>
         </div>
         <FieldError message={errors.password?.message} />
+      </div>
+
+      <div className="rounded-[1.35rem] border border-white/60 bg-white/35 px-5 py-4 text-[#193c35] shadow-[0_12px_28px_rgba(31,71,54,0.1)] backdrop-blur-sm">
+        <p className="text-sm font-black uppercase tracking-[0.18em] text-[#31584d]">
+          Demo akun
+        </p>
+        <div className="mt-3 space-y-3">
+          {config.demoAccounts.map((account) => (
+            <div
+              key={account.email}
+              className="rounded-[1rem] bg-white/55 px-4 py-3 text-sm font-bold text-[#23463d] shadow-[0_8px_18px_rgba(31,71,54,0.08)]"
+            >
+              <p className="text-base font-black text-[#173d35]">{account.role}</p>
+              <p className="mt-1 break-all">Email: {account.email}</p>
+              <p className="break-all">Password: {account.password}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {error ? (

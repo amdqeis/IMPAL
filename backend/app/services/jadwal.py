@@ -8,7 +8,7 @@ from app.repositories import jadwal as jadwal_repo
 from app.repositories import master_data as master_repo
 from app.repositories import reservasi as reservasi_repo
 from app.schemas.common import PaginatedResponse, build_paginated_response
-from app.schemas.jadwal import JadwalCreate, JadwalUpdate
+from app.schemas.jadwal import JadwalAvailabilityRead, JadwalCreate, JadwalRead, JadwalUpdate
 
 
 def list_jadwal(
@@ -22,7 +22,7 @@ def list_jadwal(
     jam_selesai: time | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Jadwal]:
+) -> PaginatedResponse[JadwalRead]:
     """Return schedules filtered by table."""
     items, total_items = jadwal_repo.list_jadwal(
         db,
@@ -35,7 +35,8 @@ def list_jadwal(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [JadwalRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def list_jadwal_tersedia(
@@ -49,7 +50,7 @@ def list_jadwal_tersedia(
     jam_selesai: time | None = None,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[Jadwal]:
+) -> PaginatedResponse[JadwalRead]:
     """Return schedules whose table status is available."""
     items, total_items = jadwal_repo.list_jadwal_tersedia(
         db,
@@ -62,7 +63,8 @@ def list_jadwal_tersedia(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return build_paginated_response(items, page=page, limit=limit, total_items=total_items)
+    serialized_items = [JadwalRead.model_validate(item) for item in items]
+    return build_paginated_response(serialized_items, page=page, limit=limit, total_items=total_items)
 
 
 def list_jadwal_availability(
@@ -74,7 +76,7 @@ def list_jadwal_availability(
     tanggal: date,
     sort_by: str | None = None,
     sort_order: str = "asc",
-) -> PaginatedResponse[dict]:
+) -> PaginatedResponse[JadwalAvailabilityRead]:
     """Return schedule slots with availability for one table and date."""
     if not master_repo.get_tempat(db, id_tempat):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tempat tidak ditemukan")
@@ -95,13 +97,15 @@ def list_jadwal_availability(
 
     # Availability dicek dari reservasi aktif pada tanggal pilihan, bukan dari tabel jadwal.
     data = [
-        {
-            "id_jadwal": jadwal.id_jadwal,
-            "id_tempat": jadwal.id_tempat,
-            "jam_mulai": jadwal.jam_mulai,
-            "jam_selesai": jadwal.jam_selesai,
-            "available": jadwal.id_jadwal not in booked_jadwal_ids,
-        }
+        JadwalAvailabilityRead.model_validate(
+            {
+                "id_jadwal": jadwal.id_jadwal,
+                "id_tempat": jadwal.id_tempat,
+                "jam_mulai": jadwal.jam_mulai,
+                "jam_selesai": jadwal.jam_selesai,
+                "available": jadwal.id_jadwal not in booked_jadwal_ids,
+            }
+        )
         for jadwal in jadwal_list
     ]
     return build_paginated_response(data, page=page, limit=limit, total_items=total_items)
@@ -110,7 +114,7 @@ def list_jadwal_availability(
 def checkAvailability(db: Session, id_tempat: int, tanggal: date) -> bool:
     """Check if any slot is available for a given table and date."""
     availability = list_jadwal_availability(db, page=1, limit=100, id_tempat=id_tempat, tanggal=tanggal)
-    return any(slot["available"] for slot in availability.data)
+    return any(slot.available for slot in availability.data)
 
 
 def create_jadwal(db: Session, payload: JadwalCreate) -> Jadwal:
