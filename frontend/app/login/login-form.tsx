@@ -15,7 +15,6 @@ import { getDashboardPathForRoles, isAllowedForLoginMode, type LoginMode } from 
 const loginSchema = z.object({
   email: z.string().email("E-mail tidak valid"),
   password: z.string().min(1, "Kata sandi wajib diisi"),
-  rememberMe: z.boolean(),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -31,6 +30,9 @@ const loginConfig = {
     redirectTo: "/user/dashboard",
     roleError: "Akun admin/owner harus masuk lewat halaman login admin.",
     submitLabel: "Login",
+    demoAccounts: [
+      { role: "User", email: "ahmad@gmail.com", password: "123123123A" },
+    ],
   },
   admin: {
     alternateHref: "/login",
@@ -38,6 +40,10 @@ const loginConfig = {
     redirectTo: "/admin/dashboard",
     roleError: "Akun ini tidak memiliki akses admin/owner.",
     submitLabel: "Login Admin",
+    demoAccounts: [
+      { role: "Owner", email: "owner@sibooking.test", password: "123123123A" },
+      { role: "Admin", email: "admin@sibooking.test", password: "123123123A" },
+    ],
   },
 } satisfies Record<
   LoginMode,
@@ -47,6 +53,7 @@ const loginConfig = {
     redirectTo: string;
     roleError: string;
     submitLabel: string;
+    demoAccounts: { role: string; email: string; password: string }[];
   }
 >;
 
@@ -65,7 +72,6 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
     defaultValues: {
       email: "",
       password: "",
-      rememberMe: false,
     },
   });
 
@@ -85,7 +91,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         return;
       }
 
-      persistAuth(auth, values.rememberMe);
+      persistAuth(auth, false);
       toast.success("Login berhasil, diarahkan ke dashboard.");
 
       router.push(mode === "admin" ? getDashboardPathForRoles(auth.roles) : config.redirectTo);
@@ -165,21 +171,22 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         <FieldError message={errors.password?.message} />
       </div>
 
-      <div className="flex flex-col gap-4 pt-1 text-lg font-bold text-[#193c35] sm:flex-row sm:items-center sm:justify-between">
-        <label className="inline-flex items-center gap-3">
-          <input
-            type="checkbox"
-            {...register("rememberMe")}
-            className="h-10 w-10 appearance-none rounded-full border border-white/70 bg-white shadow-[0_8px_18px_rgba(31,71,54,0.12)] transition-colors duration-300 checked:border-[#1f4736] checked:bg-[#1f4736]"
-          />
-          <span>Ingat saya</span>
-        </label>
-        <button
-          type="button"
-          className="text-left transition-colors duration-300 hover:text-[#102a24] sm:text-right"
-        >
-          Lupa Sandi ?
-        </button>
+      <div className="rounded-[1.35rem] border border-white/60 bg-white/35 px-5 py-4 text-[#193c35] shadow-[0_12px_28px_rgba(31,71,54,0.1)] backdrop-blur-sm">
+        <p className="text-sm font-black uppercase tracking-[0.18em] text-[#31584d]">
+          Demo akun
+        </p>
+        <div className="mt-3 space-y-3">
+          {config.demoAccounts.map((account) => (
+            <div
+              key={account.email}
+              className="rounded-[1rem] bg-white/55 px-4 py-3 text-sm font-bold text-[#23463d] shadow-[0_8px_18px_rgba(31,71,54,0.08)]"
+            >
+              <p className="text-base font-black text-[#173d35]">{account.role}</p>
+              <p className="mt-1 break-all">Email: {account.email}</p>
+              <p className="break-all">Password: {account.password}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {error ? (
