@@ -15,7 +15,6 @@ import { getDashboardPathForRoles, isAllowedForLoginMode, type LoginMode } from 
 const loginSchema = z.object({
   email: z.string().email("E-mail tidak valid"),
   password: z.string().min(1, "Kata sandi wajib diisi"),
-  rememberMe: z.boolean(),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -65,7 +64,6 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
     defaultValues: {
       email: "",
       password: "",
-      rememberMe: false,
     },
   });
 
@@ -85,7 +83,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         return;
       }
 
-      persistAuth(auth, values.rememberMe);
+      persistAuth(auth, true);
       toast.success("Login berhasil, diarahkan ke dashboard.");
 
       router.push(mode === "admin" ? getDashboardPathForRoles(auth.roles) : config.redirectTo);
@@ -165,30 +163,13 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         <FieldError message={errors.password?.message} />
       </div>
 
-      <div className="flex flex-col gap-4 pt-1 text-lg font-bold text-[#193c35] sm:flex-row sm:items-center sm:justify-between">
-        <label className="inline-flex items-center gap-3">
-          <input
-            type="checkbox"
-            {...register("rememberMe")}
-            className="h-10 w-10 appearance-none rounded-full border border-white/70 bg-white shadow-[0_8px_18px_rgba(31,71,54,0.12)] transition-colors duration-300 checked:border-[#1f4736] checked:bg-[#1f4736]"
-          />
-          <span>Ingat saya</span>
-        </label>
-        <button
-          type="button"
-          className="text-left transition-colors duration-300 hover:text-[#102a24] sm:text-right"
-        >
-          Lupa Sandi ?
-        </button>
-      </div>
-
       {error ? (
         <div className="rounded-[1.5rem] border border-[#e9a3a9] bg-[#fff4f5] px-5 py-4 text-sm font-semibold text-[#b14250] shadow-[0_12px_24px_rgba(177,66,80,0.08)]">
           {error}
         </div>
       ) : null}
 
-      <div className="pt-4 sm:pt-8">
+      <div className="pt-2 sm:pt-6">
         <button
           type="submit"
           disabled={isSubmitting}

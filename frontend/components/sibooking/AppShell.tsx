@@ -257,7 +257,7 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
   const sidebarContent = useMemo(
     () => (
       <div className="flex h-full min-h-0 flex-col px-4 py-5">
-        <Link href={role === "owner" ? "/owner/reports" : role === "admin" ? "/admin/dashboard" : "/user/dashboard"} className="flex items-center gap-2 md:justify-center lg:justify-start">
+        <Link href={role === "owner" ? "/owner/reports" : role === "admin" ? "/admin/dashboard" : "/user/dashboard"} className="shrink-0 flex items-center gap-2 md:justify-center lg:justify-start">
           <Image
             src="/Logo Sibooking.png"
             alt="SiBooking logo"
@@ -281,28 +281,31 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
           />
         ) : null}
 
-        <nav className="mt-7 grid gap-4">
-          {menu.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className="relative flex h-11 min-w-0 items-center rounded-xl px-2 text-[18px] font-extrabold text-black transition hover:bg-[#FFF8ED] md:justify-center md:px-0 lg:justify-start lg:gap-4 lg:px-2"
-              >
-                {active ? <span className="absolute left-0 h-8 w-[3px] rounded-full bg-[#F5A400]" /> : null}
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center ${active ? "text-[#312783]" : "text-[#B6C1D0]"}`}>
-                  <Icon className="h-[21px] w-[21px] stroke-[2.7]" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 truncate md:hidden lg:inline">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="mt-7 flex min-h-0 flex-1 flex-col">
+          <nav className="flex-1 overflow-y-auto pr-1">
+            <div className="grid gap-4 pb-2">
+              {menu.map((item) => {
+                const Icon = item.icon;
+                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className="relative flex h-11 min-w-0 items-center rounded-xl px-2 text-[18px] font-extrabold text-black transition hover:bg-[#FFF8ED] md:justify-center md:px-0 lg:justify-start lg:gap-4 lg:px-2"
+                  >
+                    {active ? <span className="absolute left-0 h-8 w-[3px] rounded-full bg-[#F5A400]" /> : null}
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center ${active ? "text-[#312783]" : "text-[#B6C1D0]"}`}>
+                      <Icon className="h-[21px] w-[21px] stroke-[2.7]" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 truncate md:hidden lg:inline">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
 
-        <div className="mt-auto pt-6">
+          <div className="shrink-0 pt-6">
           <div className="mb-3 flex min-w-0 items-center gap-2 rounded-full bg-[#D8F1E2] p-1.5 md:justify-center lg:justify-start">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#196246]">
               <UserCircle className="h-9 w-9 text-[#DDF3E8]" aria-hidden="true" />
@@ -338,6 +341,7 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
               <span className="truncate md:hidden lg:inline">Logout</span>
             </button>
           </div>
+        </div>
         </div>
       </div>
     ),
@@ -377,13 +381,13 @@ export function AppShell({ role, children, showBranchSelector = true }: AppShell
         </button>
       </header>
 
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[86px] border-r border-[#E5E7EB] bg-white md:block lg:w-[218px]">
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen max-h-screen w-[86px] overflow-hidden border-r border-[#E5E7EB] bg-white md:block lg:w-[218px]">
         {sidebarContent}
       </aside>
 
       {isOpen ? (
         <div className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px] md:hidden">
-          <aside className="absolute left-4 right-4 top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-[22px] border border-[#E5E7EB] bg-white shadow-[0_20px_60px_rgba(15,91,71,0.18)]">
+          <aside className="absolute left-4 right-4 top-20 flex max-h-[calc(100vh-6rem)] min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#E5E7EB] bg-white shadow-[0_20px_60px_rgba(15,91,71,0.18)]">
             {sidebarContent}
           </aside>
         </div>
