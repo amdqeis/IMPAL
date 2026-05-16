@@ -91,7 +91,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         return;
       }
 
-      persistAuth(auth, false);
+      persistAuth(auth, true);
       toast.success("Login berhasil, diarahkan ke dashboard.");
 
       router.push(mode === "admin" ? getDashboardPathForRoles(auth.roles) : config.redirectTo);
@@ -195,7 +195,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         </div>
       ) : null}
 
-      <div className="pt-4 sm:pt-8">
+      <div className="pt-2 sm:pt-6">
         <button
           type="submit"
           disabled={isSubmitting}

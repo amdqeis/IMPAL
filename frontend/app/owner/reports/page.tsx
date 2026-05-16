@@ -484,7 +484,7 @@ function ReportEditDialog({
 }) {
   return (
     <ModalShell onClose={onClose}>
-      <form onSubmit={onSubmit} className="w-full max-w-[520px] rounded-[12px] bg-white p-5 text-[#23313A] shadow-[0_24px_70px_rgba(15,76,62,0.25)] sm:p-6">
+      <form onSubmit={onSubmit} className="max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-[12px] bg-white p-5 text-[#23313A] shadow-[0_24px_70px_rgba(15,76,62,0.25)] sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-[24px] font-black text-[#174D3D]">Edit Laporan</h2>
@@ -550,8 +550,8 @@ function ReportEditDialog({
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4 py-6 backdrop-blur-[2px]" role="presentation" onMouseDown={onClose}>
-      <div role="presentation" onMouseDown={(event) => event.stopPropagation()} className="w-full">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]" role="presentation" onMouseDown={onClose}>
+      <div role="presentation" onMouseDown={(event) => event.stopPropagation()} className="flex w-full items-center justify-center">
         {children}
       </div>
     </div>
