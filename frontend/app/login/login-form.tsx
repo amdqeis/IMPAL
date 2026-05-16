@@ -91,11 +91,11 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         return;
       }
 
-<<<<<<< HEAD
+<<<<<<<<< Temporary merge branch 1
       persistAuth(auth, false);
-=======
+=========
       persistAuth(auth, true);
->>>>>>> buildingFE
+>>>>>>>>> Temporary merge branch 2
       toast.success("Login berhasil, diarahkan ke dashboard.");
 
       router.push(mode === "admin" ? getDashboardPathForRoles(auth.roles) : config.redirectTo);
@@ -175,7 +175,7 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         <FieldError message={errors.password?.message} />
       </div>
 
-<<<<<<< HEAD
+<<<<<<<<< Temporary merge branch 1
       <div className="rounded-[1.35rem] border border-white/60 bg-white/35 px-5 py-4 text-[#193c35] shadow-[0_12px_28px_rgba(31,71,54,0.1)] backdrop-blur-sm">
         <p className="text-sm font-black uppercase tracking-[0.18em] text-[#31584d]">
           Demo akun
@@ -194,8 +194,8 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         </div>
       </div>
 
-=======
->>>>>>> buildingFE
+=========
+>>>>>>>>> Temporary merge branch 2
       {error ? (
         <div className="rounded-[1.5rem] border border-[#e9a3a9] bg-[#fff4f5] px-5 py-4 text-sm font-semibold text-[#b14250] shadow-[0_12px_24px_rgba(177,66,80,0.08)]">
           {error}
