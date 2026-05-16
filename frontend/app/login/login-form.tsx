@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -25,8 +24,6 @@ type LoginFormProps = {
 
 const loginConfig = {
   user: {
-    alternateHref: "/admin/login",
-    alternateLabel: "Masuk sebagai admin/owner",
     redirectTo: "/user/dashboard",
     roleError: "Akun admin/owner harus masuk lewat halaman login admin.",
     submitLabel: "Login",
@@ -35,8 +32,6 @@ const loginConfig = {
     ],
   },
   admin: {
-    alternateHref: "/login",
-    alternateLabel: "Masuk sebagai user",
     redirectTo: "/admin/dashboard",
     roleError: "Akun ini tidak memiliki akses admin/owner.",
     submitLabel: "Login Admin",
@@ -48,8 +43,6 @@ const loginConfig = {
 } satisfies Record<
   LoginMode,
   {
-    alternateHref: string;
-    alternateLabel: string;
     redirectTo: string;
     roleError: string;
     submitLabel: string;
@@ -171,17 +164,17 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         <FieldError message={errors.password?.message} />
       </div>
 
-      <div className="rounded-[1.35rem] border border-white/60 bg-white/35 px-5 py-4 text-[#193c35] shadow-[0_12px_28px_rgba(31,71,54,0.1)] backdrop-blur-sm">
-        <p className="text-sm font-black uppercase tracking-[0.18em] text-[#31584d]">
+      <div className="rounded-[1.15rem] border border-white/55 bg-white/28 px-4 py-3 text-[#193c35] shadow-[0_10px_24px_rgba(31,71,54,0.08)] backdrop-blur-sm">
+        <p className="text-[0.72rem] font-black uppercase tracking-[0.16em] text-[#31584d]">
           Demo akun
         </p>
-        <div className="mt-3 space-y-3">
+        <div className="mt-2 space-y-2">
           {config.demoAccounts.map((account) => (
             <div
               key={account.email}
-              className="rounded-[1rem] bg-white/55 px-4 py-3 text-sm font-bold text-[#23463d] shadow-[0_8px_18px_rgba(31,71,54,0.08)]"
+              className="rounded-[0.95rem] bg-white/50 px-3 py-2.5 text-[0.82rem] font-semibold text-[#23463d] shadow-[0_6px_14px_rgba(31,71,54,0.06)]"
             >
-              <p className="text-base font-black text-[#173d35]">{account.role}</p>
+              <p className="text-[0.92rem] font-black text-[#173d35]">{account.role}</p>
               <p className="mt-1 break-all">Email: {account.email}</p>
               <p className="break-all">Password: {account.password}</p>
             </div>
@@ -202,14 +195,6 @@ export function LoginForm({ mode = "user" }: LoginFormProps) {
         >
           {isSubmitting ? "Loading..." : config.submitLabel}
         </button>
-        <p className="mt-5 text-sm font-bold text-[#31474a]">
-          <Link
-            href={config.alternateHref}
-            className="text-[#2a4184] underline decoration-2 underline-offset-4 transition-colors hover:text-[#172b67]"
-          >
-            {config.alternateLabel}
-          </Link>
-        </p>
       </div>
     </form>
   );

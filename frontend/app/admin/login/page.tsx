@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { LoginForm } from "@/app/login/login-form";
 import { AuthPageGuard } from "@/components/sibooking/AuthPageGuard";
@@ -58,6 +59,15 @@ export default function AdminLoginPage() {
                 <div className="rounded-full border border-white/30 bg-white/16 px-5 py-3 text-sm font-black uppercase tracking-[0.22em] text-[#264740]/72 shadow-[0_12px_28px_rgba(24,56,50,0.08)] backdrop-blur-sm">
                   Admin and owner access
                 </div>
+              </div>
+
+              <div className="login-fade-up mt-5 [animation-delay:220ms]">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center rounded-full border border-[#17473a]/18 bg-[#f5fff9] px-5 py-3 text-sm font-black text-[#17473a] shadow-[0_12px_28px_rgba(24,56,50,0.12)] transition-all hover:-translate-y-0.5 hover:bg-white"
+                >
+                  Masuk sebagai user
+                </Link>
               </div>
             </div>
           </div>

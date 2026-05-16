@@ -550,8 +550,17 @@ function ReportEditDialog({
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4 py-6 backdrop-blur-[2px]" role="presentation" onMouseDown={onClose}>
-      <div role="presentation" onMouseDown={(event) => event.stopPropagation()} className="w-full">
+    <div
+      className="fixed inset-0 z-[90] overflow-y-auto bg-black/30 px-4 py-4 backdrop-blur-[2px] sm:py-6"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={(event) => event.stopPropagation()}
+        className="flex min-h-full w-full items-center justify-center"
+      >
         {children}
       </div>
     </div>

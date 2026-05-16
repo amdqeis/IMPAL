@@ -61,6 +61,15 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div className="login-fade-up mt-5 [animation-delay:220ms]">
+                <Link
+                  href="/admin/login"
+                  className="inline-flex items-center rounded-full border border-[#17473a]/18 bg-[#f5fff9] px-5 py-3 text-sm font-black text-[#17473a] shadow-[0_12px_28px_rgba(24,56,50,0.12)] transition-all hover:-translate-y-0.5 hover:bg-white"
+                >
+                  Masuk sebagai admin/owner
+                </Link>
+              </div>
+
               <p className="login-fade-up mt-8 text-xl font-bold text-[#31474a] sm:text-[2rem] [animation-delay:260ms]">
                 Belum punya akun?{" "}
                 <Link
