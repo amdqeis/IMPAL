@@ -25,26 +25,35 @@ https://sibooking.keispace.cloud/docs
 *Detail proses bisnis dan integrasi database.*
 
 ### ERD
-![ERD](assets/ERD/ERD.png)
+![ERD](assets/ERD/ERD.jng)
 *Rancangan Database.*
 
 ### Class Diagram
-![Class Diagram](assets/ClassDiragram/ClassDiagram.png)
+![Class Diagram](assets/ClassDiagram/ClassDiagram.png)
 *Detail Behavior setiap kelas.*
 ---
 
 ## 🎨 Mockup Antarmuka
 Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 
-| Login Page | Register Page | Dashboard Admin |
+| Booking Admin | Booking User | Booking Completed |
 | :---: | :---: | :---: |
-| ![Login](assets/mock/LoginPage.png) | ![Regis](assets/mock/RegisterPage.png) | ![DashAdm](assets/mock/DashboardAdmin.png) |
-| Dashboard User | Payment Page | Booking completed |
+| ![Booking Admin](assets/UIFigma/Booking_Admin.png) | ![Booking User](assets/UIFigma/Booking_User.png) | ![Booking Completed](assets/UIFigma/BookingCompleted.png) |
+| Cashflow | Daftar Akun | Dashboard Admin |
 | :---: | :---: | :---: |
-| ![DashUsr](assets/mock/DashboardUser.png) | ![Payment](assets/mock/BayarDongs.png) | ![Booked](assets/mock/BookingCompleted.png) |
-| Status Booking | History |
+| ![Cashflow](assets/UIFigma/Cashflow.png) | ![Daftar Akun](assets/UIFigma/Daftar_Akun.png) | ![Dashboard Admin](assets/UIFigma/Dashboard_Admin.png) |
+| Dashboard User | Data Users | History User |
 | :---: | :---: | :---: |
-| ![Status](assets/mock/BookingUser.png) | ![Dash](assets/mock/HistoryUser.png) |
+| ![Dashboard User](assets/UIFigma/Dashboard_User.png) | ![Data Users](assets/UIFigma/Data_Users.png) | ![History User](assets/UIFigma/HistoryUser.png) |
+| Login Page Admin | Login Page User | Payment Page |
+| :---: | :---: | :---: |
+| ![Login Page Admin](assets/UIFigma/LoginPage(admin).png) | ![Login Page User](assets/UIFigma/LoginPage(user).png) | ![Payment Page](assets/UIFigma/Payment_Page.png) |
+| Payment | Profile Page Admin | Profile Page User |
+| :---: | :---: | :---: |
+| ![Payment](assets/UIFigma/Payment.png) | ![Profile Page Admin](assets/UIFigma/Profile_Page(Admin).png) | ![Profile Page User](assets/UIFigma/Profile_Page(User).png) |
+| Schedule |  |  |
+| :---: | :---: | :---: |
+| ![Schedule](assets/UIFigma/Schedule.png) |  |  |
 ---
 
 ## 🛠️ Stack Teknologi
