@@ -182,8 +182,20 @@ def update_user(db: Session, user_id: int, payload: UserUpdate) -> UserAccessRea
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan")
 
     update_data = payload.model_dump(exclude_unset=True)
+    role_names = update_data.pop("roles", None)
     for key, value in update_data.items():
         setattr(user, key, value)
+
+    if role_names is not None:
+        roles = user_repo.list_roles_by_names(db, role_names)
+        found_roles = {role.nama_role for role in roles}
+        missing_roles = [role_name for role_name in role_names if role_name not in found_roles]
+        if missing_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Role tidak ditemukan: {', '.join(missing_roles)}",
+            )
+        user.roles = roles
 
     try:
         db.commit()

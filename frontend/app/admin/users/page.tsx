@@ -23,12 +23,13 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/Sta
 import { useToast } from "@/components/sibooking/ToastProvider";
 import {
   ApiError,
+  type AuthResponse,
   api,
   clearAuth,
   getStoredAuth,
-  type AuthResponse,
   type PaginationMeta,
   type RegisterPayload,
+  type RoleName,
   type UserUpdatePayload,
   type UserWithAccess,
 } from "@/lib/api";
@@ -40,6 +41,7 @@ type UserFormState = {
   email: string;
   no_hp: string;
   password: string;
+  role: RoleName;
 };
 
 const ITEMS_PER_PAGE = 6;
@@ -57,7 +59,9 @@ const initialFormState: UserFormState = {
   email: "",
   no_hp: "",
   password: "",
+  role: "user",
 };
+const MANAGEABLE_ROLES: RoleName[] = ["user", "admin", "owner"];
 
 export default function AdminUsersPage() {
   return (
@@ -234,6 +238,7 @@ function AdminUsersContent() {
       email: user.email,
       no_hp: user.no_hp,
       password: "",
+      role: getPrimaryRole(user.roles),
     });
   };
 
@@ -259,6 +264,7 @@ function AdminUsersContent() {
       email: form.email.trim(),
       no_hp: form.no_hp.trim(),
       password: form.password,
+      role: normalizeRole(form.role),
     };
 
     if (!normalizedForm.nama || !normalizedForm.email || !normalizedForm.no_hp) {
@@ -286,6 +292,7 @@ function AdminUsersContent() {
           nama: normalizedForm.nama,
           email: normalizedForm.email,
           no_hp: normalizedForm.no_hp,
+          roles: [normalizedForm.role],
         };
         const updated = await api.auth.updateUser(editingUser.id_user, payload);
 
@@ -567,6 +574,7 @@ function AdminUsersContent() {
         <UserFormDialog
           mode={dialogMode}
           form={form}
+          canEditRole={dialogMode === "edit" && editingUser?.id_user !== currentUserId}
           submitting={submitting}
           onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
           onClose={closeDialog}
@@ -624,6 +632,7 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 function UserFormDialog({
   mode,
   form,
+  canEditRole,
   submitting,
   onChange,
   onClose,
@@ -631,6 +640,7 @@ function UserFormDialog({
 }: {
   mode: UserDialogMode;
   form: UserFormState;
+  canEditRole: boolean;
   submitting: boolean;
   onChange: (key: keyof UserFormState, value: string) => void;
   onClose: () => void;
@@ -648,7 +658,7 @@ function UserFormDialog({
           <div>
             <h2 className="text-[24px] font-black text-[#174D3D]">{isCreate ? "Add User" : "Edit User"}</h2>
             <p className="mt-1 text-[13px] font-bold text-[#6A9484]">
-              {isCreate ? "Buat akun user baru." : "Perbarui profil user."}
+              {isCreate ? "Buat akun user baru." : "Perbarui profil dan akses role user."}
             </p>
           </div>
           <button
@@ -696,7 +706,20 @@ function UserFormDialog({
               minLength={8}
               required
             />
-          ) : null}
+          ) : canEditRole ? (
+            <SelectField
+              label="Role"
+              value={form.role}
+              onChange={(value) => onChange("role", value)}
+              options={MANAGEABLE_ROLES}
+            />
+          ) : (
+            <ReadOnlyField
+              label="Role"
+              value={form.role ? toTitleCase(String(form.role)) : "-"}
+              hint="Role akun yang sedang digunakan tidak dapat diubah dari sesi ini."
+            />
+          )}
         </div>
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -754,6 +777,47 @@ function FormField({
         className="h-11 rounded-[9px] border border-[#CFE8DA] bg-[#F8FFFB] px-3 text-[15px] font-bold text-[#23313A] outline-none transition placeholder:text-[#94A3B8] focus:border-[#21684E] focus:bg-white"
       />
     </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-[13px] font-black text-[#51645E]">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 rounded-[9px] border border-[#CFE8DA] bg-[#F8FFFB] px-3 text-[15px] font-bold text-[#23313A] outline-none transition focus:border-[#21684E] focus:bg-white"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {toTitleCase(option)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ReadOnlyField({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="grid gap-2">
+      <span className="text-[13px] font-black text-[#51645E]">{label}</span>
+      <div className="rounded-[9px] border border-[#CFE8DA] bg-[#EDF7F1] px-3 py-3 text-[15px] font-bold text-[#23313A]">
+        {value}
+      </div>
+      {hint ? <p className="text-[12px] font-bold text-[#6A9484]">{hint}</p> : null}
+    </div>
   );
 }
 
@@ -935,6 +999,15 @@ function authResponseToUser(response: AuthResponse): UserWithAccess {
     permissions: response.permissions,
     status: "Active",
   };
+}
+
+function getPrimaryRole(roles: string[]) {
+  for (const role of MANAGEABLE_ROLES) {
+    if (roles.some((item) => normalizeRole(item) === role)) {
+      return role;
+    }
+  }
+  return "user";
 }
 
 function normalizeRole(role: string) {

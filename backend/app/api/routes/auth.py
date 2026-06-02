@@ -151,6 +151,14 @@ async def update_user(
     """Patch user profile data."""
     if user_id != current_user.id_user and not _can_manage_users(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User tidak boleh mengubah user lain")
+    if payload.roles is not None:
+        if not _can_manage_users(current_user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Hanya admin yang dapat mengubah role user")
+        if user_id == current_user.id_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role akun yang sedang digunakan tidak bisa diubah dari sesi ini",
+            )
     return await run_db(auth_service.update_user, user_id, payload)
 
 

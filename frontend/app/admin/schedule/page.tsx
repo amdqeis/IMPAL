@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, Plus, Search } from "lucide-react";
+import { CalendarDays, Search } from "lucide-react";
 
 import { AppShell, useSelectedBranch } from "@/components/sibooking/AppShell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/sibooking/States";
@@ -161,13 +160,6 @@ function AdminScheduleContent() {
               </p>
             ) : null}
           </div>
-          <Link
-            href="/admin/booking"
-            className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-[6px] bg-[#21684E] px-4 text-[18px] font-black text-white shadow-[0_10px_22px_rgba(33,104,78,0.18)] transition hover:bg-[#174D3D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174D3D]"
-          >
-            <Plus className="h-5 w-5 stroke-[3]" aria-hidden="true" />
-            Add Reservation
-          </Link>
         </div>
 
         <div className="mt-7 grid gap-3 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,0.75fr)_minmax(150px,0.45fr)_minmax(260px,1fr)]">

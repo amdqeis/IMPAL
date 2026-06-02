@@ -52,6 +52,29 @@ class UserUpdate(BaseModel):
     nama: str | None = Field(default=None, min_length=1, max_length=255)
     email: str | None = Field(default=None, min_length=3, max_length=255)
     no_hp: str | None = Field(default=None, min_length=11, max_length=12)
+    roles: list[str] | None = Field(default=None, min_length=1)
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return value
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for role in value:
+            role_name = role.strip().lower()
+            if not role_name:
+                raise ValueError("Role tidak boleh kosong")
+            if role_name not in {"user", "admin", "owner"}:
+                raise ValueError("Role tidak valid")
+            if role_name not in seen:
+                seen.add(role_name)
+                normalized.append(role_name)
+
+        if not normalized:
+            raise ValueError("Role minimal satu")
+        return normalized
 
 
 class UserAccessRead(UserRead):

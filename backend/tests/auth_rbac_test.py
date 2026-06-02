@@ -1,8 +1,11 @@
+import asyncio
 from datetime import date, time, timedelta
 import unittest
+from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
+from pydantic import ValidationError
 from starlette.requests import Request
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
@@ -12,9 +15,9 @@ from app.api.deps import get_current_session_user, get_current_user, require_per
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.models import Base, Cabang, Jadwal, Permission, Role, Tempat, User, UserRole
-from app.schemas.auth import LoginRequest, UserCreate
+from app.schemas.auth import LoginRequest, UserCreate, UserUpdate
 from app.services.auth_claims import AuthenticatedUser
-from app.api.routes.auth import get_me, logout
+from app.api.routes.auth import get_me, logout, update_user as update_user_route
 from app.schemas.reservasi import ReservasiCreate
 from app.services import auth as auth_service
 from app.services import reservasi as reservasi_service
@@ -265,6 +268,66 @@ class AuthRbacTest(unittest.TestCase):
         with self.assertRaises(HTTPException) as denied:
             reservasi_service.create_reservasi(self.db, payload, current_user=current_user)
         self.assertEqual(denied.exception.status_code, 403)
+
+    def test_update_user_can_replace_roles(self) -> None:
+        managed_user = self._create_user("managed@example.com")
+
+        updated = auth_service.update_user(self.db, managed_user.id_user, UserUpdate(roles=["admin"]))
+
+        self.assertEqual(updated.roles, ["admin"])
+        refreshed = auth_service.get_user_access(self.db, managed_user.id_user)
+        self.assertEqual(refreshed.roles, ["admin"])
+
+    def test_update_user_payload_rejects_unknown_role(self) -> None:
+        with self.assertRaises(ValidationError):
+            UserUpdate(roles=["superadmin"])
+
+    def test_route_rejects_role_change_for_non_admin_self_update(self) -> None:
+        current_user = AuthenticatedUser(
+            id_user=10,
+            email="user@example.com",
+            nama="User",
+            no_hp="081200000010",
+            role_names=["user"],
+            permissions=[],
+        )
+
+        with self.assertRaises(HTTPException) as denied:
+            asyncio.run(update_user_route(10, UserUpdate(roles=["admin"]), current_user))
+
+        self.assertEqual(denied.exception.status_code, 403)
+
+    def test_route_rejects_role_change_for_current_admin_session(self) -> None:
+        current_user = AuthenticatedUser(
+            id_user=11,
+            email="admin@example.com",
+            nama="Admin",
+            no_hp="081200000011",
+            role_names=["admin"],
+            permissions=["manage_users"],
+        )
+
+        with self.assertRaises(HTTPException) as denied:
+            asyncio.run(update_user_route(11, UserUpdate(roles=["owner"]), current_user))
+
+        self.assertEqual(denied.exception.status_code, 400)
+
+    def test_route_allows_admin_to_change_other_user_role(self) -> None:
+        current_user = AuthenticatedUser(
+            id_user=12,
+            email="admin2@example.com",
+            nama="Admin Dua",
+            no_hp="081200000012",
+            role_names=["admin"],
+            permissions=["manage_users"],
+        )
+        expected = auth_service.build_user_access(self._create_user("target@example.com", role=self.user_role))
+
+        with patch("app.api.routes.auth.run_db", new=AsyncMock(return_value=expected)) as mocked_run_db:
+            result = asyncio.run(update_user_route(expected.id_user, UserUpdate(roles=["admin"]), current_user))
+
+        self.assertEqual(result.roles, expected.roles)
+        mocked_run_db.assert_awaited_once()
 
 
 if __name__ == "__main__":

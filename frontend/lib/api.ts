@@ -14,7 +14,7 @@ export class ApiError extends Error {
   }
 }
 
-export type RoleName = "admin" | "user" | string;
+export type RoleName = "admin" | "owner" | "user" | string;
 
 export type User = {
   id_user: number;
@@ -53,7 +53,9 @@ export type LoginPayload = {
   password: string;
 };
 
-export type UserUpdatePayload = Partial<Pick<User, "nama" | "email" | "no_hp">>;
+export type UserUpdatePayload = Partial<Pick<User, "nama" | "email" | "no_hp">> & {
+  roles?: RoleName[];
+};
 
 export type Cabang = {
   id_cabang: number;

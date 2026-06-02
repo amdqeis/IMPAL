@@ -193,13 +193,6 @@ function AdminCashflowContent() {
                 Overview transaksi {selectedBranch ? selectedBranch.nama : "per cabang"}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => toast.info("Tambah transaksi belum tersedia dari halaman ini.")}
-              className="inline-flex h-12 items-center justify-center rounded-[8px] bg-[#21684E] px-4 text-[18px] font-black text-white transition hover:bg-[#2B7A5D]"
-            >
-              +Add Transaction
-            </button>
           </div>
 
           <div className="mt-12 flex w-full max-w-[380px] flex-col gap-4 rounded-[10px] bg-[#EEFFF4] p-5 text-[#4B5563] sm:flex-row sm:items-center sm:justify-between sm:px-7">

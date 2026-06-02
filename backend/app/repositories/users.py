@@ -80,6 +80,13 @@ def get_role_by_name(db: Session, role_name: str) -> Role | None:
     return db.scalar(select(Role).where(Role.nama_role == role_name))
 
 
+def list_roles_by_names(db: Session, role_names: list[str]) -> list[Role]:
+    if not role_names:
+        return []
+    roles = db.scalars(select(Role).where(Role.nama_role.in_(role_names))).all()
+    return list(roles)
+
+
 def list_permission_names(db: Session) -> list[str]:
     permissions = db.scalars(select(Permission.nama_permission).order_by(Permission.nama_permission)).all()
     return list(permissions)

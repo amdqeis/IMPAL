@@ -809,7 +809,7 @@ File:
 
 Fungsi:
 
-- List users, search, role/status filter, create user, edit user, delete user, pagination backend.
+- List users, search, role/status filter, create user, edit user, ubah role user lain, delete user, pagination backend.
 
 API yang digunakan:
 
@@ -838,7 +838,8 @@ Catatan:
 
 - Search dan role dikirim ke backend bersama `page`/`limit`.
 - Status masih difilter di frontend karena schema backend saat ini mengembalikan status default `Active`.
-- Create user memakai endpoint register, sehingga role default mengikuti backend dan frontend tidak menyediakan pemilihan role.
+- Create user memakai endpoint register, sehingga role default mengikuti backend dan frontend tidak menyediakan pemilihan role saat create.
+- Edit user menyediakan pemilihan satu role (`user`, `admin`, `owner`) untuk user lain; role akun admin yang sedang dipakai tidak bisa diubah dari sesi yang sama.
 - Delete akun yang sedang digunakan dicegah di frontend.
 
 ### Admin/User/Owner Profile
@@ -1118,7 +1119,7 @@ Catatan performa:
 | `AdminSchedulePage` | `/reservasi/` | GET | `id_cabang`, `start_date`, `end_date`, `status_reservasi`, `search` | `Reservasi[]` |
 | `AdminUsersPage` | `/auth/users` | GET | `page`, `limit`, `search`, `role` | `PaginatedResponse<UserWithAccess>` |
 | `AdminUsersPage` | `/auth/register` | POST | `nama`, `email`, `no_hp`, `password` | `AuthResponse` |
-| `AdminUsersPage` | `/auth/users/{user_id}` | PATCH | `nama`, `email`, `no_hp` | `UserWithAccess` |
+| `AdminUsersPage` | `/auth/users/{user_id}` | PATCH | `nama`, `email`, `no_hp`, `roles?` | `UserWithAccess` |
 | `AdminUsersPage` | `/auth/users/{user_id}` | DELETE | path param | void |
 | `OwnerReportsPage` | `/laporan/` | GET | `page`, `limit`, `search`, `tipe` | `PaginatedResponse<Laporan>` |
 | `OwnerReportsPage` | `/laporan/` | POST | `tipe`, `lampiran`, `dibuat_oleh` | `Laporan` |

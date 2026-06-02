@@ -440,7 +440,7 @@ erDiagram
 | `LoginRequest` | `app/schemas/auth.py` | `email`, `password` | `POST /api/auth/login` |
 | `LogoutResponse` | `app/schemas/auth.py` | `message` | `POST /api/auth/logout` |
 | `UserRead` | `app/schemas/auth.py` | `id_user`, `nama`, `email`, `no_hp` | Response auth dan nested response reservasi |
-| `UserUpdate` | `app/schemas/auth.py` | `nama`, `email`, `no_hp` | `PATCH /api/auth/users/{user_id}` |
+| `UserUpdate` | `app/schemas/auth.py` | `nama`, `email`, `no_hp`, `roles?` | `PATCH /api/auth/users/{user_id}` |
 | `UserAccessRead` | `app/schemas/auth.py` | `id_user`, `nama`, `email`, `no_hp`, `roles`, `permissions`, `status` | `GET /api/auth/users`, `PATCH /api/auth/users/{user_id}` |
 | `AuthResponse` | `app/schemas/auth.py` | `user`, `roles`, `permissions`, `token`, `access_token`, `token_type`, `expires_at`, `expires_in`, `message` | register, login, me, user access |
 | `RoleRead` | `app/schemas/auth.py` | `id_role`, `nama_role` | Schema ditemukan, belum ditemukan endpoint aktif yang memakai langsung |
@@ -486,7 +486,7 @@ erDiagram
 | GET | `/api/auth/me` | `app/api/routes/auth.py` | Ambil akses user login | JWT valid |
 | GET | `/api/auth/users` | `app/api/routes/auth.py` | List users dengan role/permission | Role `admin` dan bukan `owner` berdasarkan `_can_manage_users` |
 | GET | `/api/auth/users/{user_id}/access` | `app/api/routes/auth.py` | Lihat akses user | User sendiri atau role `admin` dan bukan `owner` |
-| PATCH | `/api/auth/users/{user_id}` | `app/api/routes/auth.py` | Update profil user | User sendiri atau role `admin` dan bukan `owner` |
+| PATCH | `/api/auth/users/{user_id}` | `app/api/routes/auth.py` | Update profil user dan role user lain | Profil: user sendiri atau role `admin` dan bukan `owner`; perubahan role: hanya admin untuk user lain |
 | DELETE | `/api/auth/users/{user_id}` | `app/api/routes/auth.py` | Hapus user | Role `admin` dan bukan `owner` |
 | GET | `/api/auth/permissions` | `app/api/routes/auth.py` | List nama permission | `manage_roles` |
 | GET | `/api/master-data/cabang` | `app/api/routes/master_data.py` | List cabang, pagination/search/sort | `view_locations` atau `manage_branches` atau `manage_tables` |
