@@ -64,7 +64,36 @@ Rancangan UI aplikasi yang berfokus pada pengalaman pengguna.
 git clone https://github.com/amdqeis/IMPAL
 cd IMPAL
 ```
-### 2. Frontend
+### 2. Database
+Buat File Environment
+Database dianggap sudah tersedia. Aplikasi hanya membutuhkan konfigurasi koneksi, bukan membuat database baru. Buat dan isi file berikut:
+```bash
+backend/.env
+```
+Contoh isi file .env:
+```bash
+APP_NAME=IMPAL Backend
+APP_ENV=development
+APP_DEBUG=true
+
+SECRET_KEY=your_secret_key
+SESSION_COOKIE_NAME=your_session_cookie_name
+
+FRONTEND_URL=http://localhost:3000
+
+DATABASE_URL=your_database_url
+```
+Inisialisasi Database
+Untuk development lokal saja, setelah konfigurasi .env selesai, script berikut dapat dipakai untuk membuat table pada database yang sudah ada. Jangan jalankan ini sebagai bagian dari setup deployment jika schema database sudah disiapkan:
+```bash
+python app/db/init_db.py
+```
+Isi Dummy Data
+Untuk development lokal saja, jika ingin menambahkan data dummy, jalankan:
+```bash
+python app/db/seed_dummy_data.py
+```
+### 3. Frontend
 ```bash
 # Masuk ke Folder Frontend
 cd frontend
@@ -77,7 +106,7 @@ Secara default, frontend akan berjalan pada:
 ```bash
 http://localhost:3000
 ```
-### 3. Backend
+### 4. Backend
 Masuk ke Folder Backend
 Buka terminal baru, lalu masuk ke folder backend:
 ```bash
@@ -109,33 +138,4 @@ http://localhost:8000
 Dokumentasi API dapat diakses melalui Swagger pada:
 ```bash
 http://localhost:8000/docs
-```
-### 4. Database
-Buat File Environment
-Database dianggap sudah tersedia. Aplikasi hanya membutuhkan konfigurasi koneksi, bukan membuat database baru. Buat dan isi file berikut:
-```bash
-backend/.env
-```
-Contoh isi file .env:
-```bash
-APP_NAME=IMPAL Backend
-APP_ENV=development
-APP_DEBUG=true
-
-SECRET_KEY=your_secret_key
-SESSION_COOKIE_NAME=your_session_cookie_name
-
-FRONTEND_URL=http://localhost:3000
-
-DATABASE_URL=your_database_url
-```
-Inisialisasi Database
-Untuk development lokal saja, setelah konfigurasi .env selesai, script berikut dapat dipakai untuk membuat table pada database yang sudah ada. Jangan jalankan ini sebagai bagian dari setup deployment jika schema database sudah disiapkan:
-```bash
-python app/db/init_db.py
-```
-Isi Dummy Data
-Untuk development lokal saja, jika ingin menambahkan data dummy, jalankan:
-```bash
-python app/db/seed_dummy_data.py
 ```
