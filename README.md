@@ -25,7 +25,7 @@ https://sibooking.keispace.cloud/docs
 *Detail proses bisnis dan integrasi database.*
 
 ### ERD
-![ERD](assets/ERD/ERD.jng)
+![ERD](assets/ERD/ERD.jpg)
 *Rancangan Database.*
 
 ### Class Diagram
